@@ -15,8 +15,16 @@ from slopmarker.data.splits import (
 
 CFG = SplitConfig()
 SALT = "slopmarker-v1"
-GENRES = ["news", "product_marketing", "press_release", "forum_comment",
-          "blog_personal", "technical_docs", "encyclopedia", "academic_formal"]
+GENRES = [
+    "news",
+    "product_marketing",
+    "press_release",
+    "forum_comment",
+    "blog_personal",
+    "technical_docs",
+    "encyclopedia",
+    "academic_formal",
+]
 
 
 class TestGroupKey:
@@ -33,8 +41,7 @@ class TestGroupKey:
     def test_ai_rows_group_by_seed_cluster(self) -> None:
         """A seed, its generations, its attacks and its splices are one unit."""
         keys = {
-            group_key(seed_cluster_id="s1", host="example.com", doc_id=f"gen-{i}")
-            for i in range(5)
+            group_key(seed_cluster_id="s1", host="example.com", doc_id=f"gen-{i}") for i in range(5)
         }
         assert len(keys) == 1
 

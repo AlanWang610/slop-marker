@@ -121,13 +121,24 @@ def harvest_fineweb(
     corporate_hosts: frozenset[str] = frozenset(),
     sample: str | None = None,
     shard: Shard = None,
+    keep_natural_rate: float = 0.25,
 ) -> Iterator[DocumentRow]:
     """FineWeb, routed by URL. The only source that can supply hard negatives at scale.
 
     `sample` selects a named subset (e.g. "sample-10BT") for pilot runs; the full
     harvest passes None and filters on `dump` instead.
+
+    `keep_natural_rate` subsamples documents that matched no routing rule. Emitting
+    every one of them would swamp the hard negatives -- routed URLs are ~6.5% of the
+    crawl -- but keeping none would be worse: scope.md's mix needs at least 15% plain
+    web text, or the model's notion of "human" drifts toward the adversarial end and
+    ordinary prose starts scoring oddly.
     """
+    import random
+
     from datasets import load_dataset
+
+    rng = random.Random(0xC0FFEE + (shard[0] if shard else 0))
 
     kwargs: dict[str, Any] = {"streaming": True, "split": "train"}
     if sample:
@@ -143,6 +154,8 @@ def harvest_fineweb(
         url = row.get("url") or ""
         host = registered_domain(url)
         kind, rule = classify_url(url, corporate_host=host in corporate_hosts)
+        if kind is None and rng.random() >= keep_natural_rate:
+            continue
         yield DocumentRow(
             doc_id=doc_id_for("fineweb", row["id"]),
             text=row["text"],

@@ -72,6 +72,7 @@ def harvest_shard(
     num_shards: int,
     limit: int | None = None,
     fineweb_sample: str | None = None,
+    keep_natural_rate: float = 0.25,
 ) -> dict[str, Any]:
     """Harvest and clean one shard of one source."""
     from pathlib import Path
@@ -90,8 +91,10 @@ def harvest_shard(
     kwargs: dict[str, Any] = {"shard": (shard_index, num_shards)}
     if limit is not None:
         kwargs["limit" if source != "pile" else "limit_per_subset"] = limit
-    if source == "fineweb" and fineweb_sample:
-        kwargs["sample"] = fineweb_sample
+    if source == "fineweb":
+        kwargs["keep_natural_rate"] = keep_natural_rate
+        if fineweb_sample:
+            kwargs["sample"] = fineweb_sample
     if source == "reddit":
         kwargs.pop("limit", None)
         if limit is not None:
@@ -158,6 +161,7 @@ def main(
     shards: int = 8,
     limit: int = 0,
     fineweb_sample: str = "",
+    keep_natural_rate: float = 0.25,
 ) -> None:
     """Launch the harvest, then build the corpus.
 
@@ -166,7 +170,7 @@ def main(
             --sources fineweb,cc_news --shards 2 --limit 2000
     """
     jobs = [
-        (source, index, shards, limit or None, fineweb_sample or None)
+        (source, index, shards, limit or None, fineweb_sample or None, keep_natural_rate)
         for source in sources.split(",")
         for index in range(shards)
     ]
