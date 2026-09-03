@@ -54,7 +54,7 @@ def build_training_model(
     dropout: float = 0.1,
     pooling: str = "cls",
     attn_implementation: str | None = None,
-):  # type: ignore[no-untyped-def]
+):
     """Load the stock classifier and attach the auxiliary head beside it."""
     from transformers import AutoConfig, AutoModelForSequenceClassification
 
