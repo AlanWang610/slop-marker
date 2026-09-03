@@ -1,0 +1,33 @@
+# Newswire distributors and press-release mills. Human-written, heavily templated,
+# and among the most reliable sources of false positives (scope.md 2).
+prnewswire.com
+prnasia.com
+businesswire.com
+globenewswire.com
+prweb.com
+einpresswire.com
+accesswire.com
+newswire.com
+newswire.ca
+marketwired.com
+prlog.org
+openpr.com
+24-7pressrelease.com
+pressreleasepoint.com
+releasewire.com
+sbwire.com
+issuewire.com
+prunderground.com
+pr.com
+presswire.com
+abnnewswire.com
+acnnewswire.com
+jcnnewswire.com
+mynewsdesk.com
+cision.com
+send2press.com
+ereleases.com
+newsfilecorp.com
+prfree.org
+prbuzz.com
+onlineprnews.com

@@ -1,0 +1,11 @@
+# Forums with a high share of non-native English. The primary signal is FineWeb's
+# language_score band; this list is a supplement, not the mechanism.
+xda-developers.com
+indiabix.com
+sulekha.com
+englishforums.com
+usingenglish.com
+expatforum.com
+internations.org
+wordreference.com
+italki.com

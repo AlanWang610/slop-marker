@@ -1,0 +1,14 @@
+# Storefront and marketplace hosts, for templated product descriptions.
+shopify.com
+etsy.com
+ebay.com
+alibaba.com
+aliexpress.com
+walmart.com
+target.com
+wayfair.com
+overstock.com
+newegg.com
+bhphotovideo.com
+homedepot.com
+lowes.com

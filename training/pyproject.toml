@@ -39,7 +39,12 @@ export = [
 # (liamdugan/raid), so eval/raid.py reads it with `datasets` and scores it with our own
 # metrics. A leaderboard submission, if we ever make one, runs raid-bench via uvx.
 evaluate = ["scikit-learn>=1.5"]
-corpus = ["datatrove>=0.10", "datasketch>=1.6", "tldextract>=5", "fasttext-wheel>=0.9"]
+corpus = [
+    "datatrove>=0.10",
+    "datasketch>=1.6",
+    "tldextract>=5",
+    "fasttext-wheel>=0.9",
+]
 modal = ["modal>=1.0"]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
 

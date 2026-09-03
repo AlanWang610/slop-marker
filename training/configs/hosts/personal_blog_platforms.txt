@@ -1,0 +1,13 @@
+# Negative list: a /blog/ path here is a person, not a company.
+blogspot.com
+blogger.com
+wordpress.com
+livejournal.com
+typepad.com
+tumblr.com
+dreamwidth.org
+neocities.org
+weebly.com
+over-blog.com
+substack.com
+medium.com
