@@ -38,7 +38,7 @@ export = [
 # which would drag the whole project back to a 2023 stack. RAID is just a HF dataset
 # (liamdugan/raid), so eval/raid.py reads it with `datasets` and scores it with our own
 # metrics. A leaderboard submission, if we ever make one, runs raid-bench via uvx.
-evaluate = ["scikit-learn>=1.5"]
+evaluate = ["scikit-learn>=1.5", "scipy>=1.14"]
 # datasketch rather than datatrove for near-duplicate detection: at ~550k documents a
 # single in-memory MinHashLSH fits comfortably, and datatrove's band-partitioned
 # multi-stage pipeline buys nothing at this scale. py3langid rather than fastText
@@ -85,6 +85,13 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# transformers is untyped, so every attribute reached through the wrapped classifier
+# (config.hidden_size, .model, .head, .classifier) resolves to Any or to nn.Module's
+# broad __getattr__ return type. Checking this module tells us nothing true.
+module = "slopmarker.model.modeling"
+disable_error_code = ["no-any-return", "operator", "union-attr", "arg-type", "no-untyped-def"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
@@ -92,10 +99,11 @@ testpaths = ["tests"]
 # `export` + `evaluate` in another, and local dev needs neither. Without this, uv tries
 # to find one version set satisfying all of them at once and fails.
 [tool.uv]
+# corpus and evaluate co-exist fine now that raid-bench (which pinned numpy<1.27 and
+# scikit-learn<1.4) is no longer a dependency.
 conflicts = [
     [{ extra = "corpus" }, { extra = "train" }],
     [{ extra = "corpus" }, { extra = "export" }],
-    [{ extra = "corpus" }, { extra = "evaluate" }],
 ]
 
 [tool.ruff.lint.per-file-ignores]

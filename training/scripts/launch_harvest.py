@@ -51,9 +51,7 @@ def spawn(plan: str) -> None:
     for source, shards, limit, natural, config in PLANS[plan]:
         for index in range(shards):
             call = harvest.spawn(source, index, shards, limit, None, natural, config)
-            calls.append(
-                {"id": call.object_id, "source": source, "shard": index, "config": config}
-            )
+            calls.append({"id": call.object_id, "source": source, "shard": index, "config": config})
     existing = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else []
     STATE.write_text(json.dumps(existing + calls, indent=2), encoding="utf-8")
     print(f"spawned {len(calls)} shards for plan '{plan}'")
