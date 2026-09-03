@@ -81,3 +81,6 @@ tmp/
 
 # Transient Modal call ids from scripts/launch_harvest.py
 training/scripts/.harvest_calls.json
+
+# Transient Modal call ids
+training/scripts/.generation_calls.json
