@@ -577,14 +577,14 @@ resolution-markers = [
     "extra != 'extra-10-slopmarker-corpus' and extra != 'extra-10-slopmarker-train'",
 ]
 dependencies = [
-    { name = "filelock" },
-    { name = "fsspec" },
+    { name = "filelock", marker = "extra == 'extra-10-slopmarker-evaluate' or extra == 'extra-10-slopmarker-export' or extra == 'extra-10-slopmarker-train' or extra != 'extra-10-slopmarker-corpus'" },
+    { name = "fsspec", marker = "extra == 'extra-10-slopmarker-evaluate' or extra == 'extra-10-slopmarker-export' or extra == 'extra-10-slopmarker-train' or extra != 'extra-10-slopmarker-corpus'" },
     { name = "hf-xet", marker = "(platform_machine == 'aarch64' and extra != 'extra-10-slopmarker-corpus') or (platform_machine == 'amd64' and extra != 'extra-10-slopmarker-corpus') or (platform_machine == 'arm64' and extra != 'extra-10-slopmarker-corpus') or (platform_machine == 'x86_64' and extra != 'extra-10-slopmarker-corpus') or (extra == 'extra-10-slopmarker-corpus' and extra == 'extra-10-slopmarker-evaluate') or (extra == 'extra-10-slopmarker-corpus' and extra == 'extra-10-slopmarker-export') or (extra == 'extra-10-slopmarker-corpus' and extra == 'extra-10-slopmarker-train')" },
-    { name = "packaging" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "tqdm" },
-    { name = "typing-extensions" },
+    { name = "packaging", marker = "extra == 'extra-10-slopmarker-evaluate' or extra == 'extra-10-slopmarker-export' or extra == 'extra-10-slopmarker-train' or extra != 'extra-10-slopmarker-corpus'" },
+    { name = "pyyaml", marker = "extra == 'extra-10-slopmarker-evaluate' or extra == 'extra-10-slopmarker-export' or extra == 'extra-10-slopmarker-train' or extra != 'extra-10-slopmarker-corpus'" },
+    { name = "requests", marker = "extra == 'extra-10-slopmarker-evaluate' or extra == 'extra-10-slopmarker-export' or extra == 'extra-10-slopmarker-train' or extra != 'extra-10-slopmarker-corpus'" },
+    { name = "tqdm", marker = "extra == 'extra-10-slopmarker-evaluate' or extra == 'extra-10-slopmarker-export' or extra == 'extra-10-slopmarker-train' or extra != 'extra-10-slopmarker-corpus'" },
+    { name = "typing-extensions", marker = "extra == 'extra-10-slopmarker-evaluate' or extra == 'extra-10-slopmarker-export' or extra == 'extra-10-slopmarker-train' or extra != 'extra-10-slopmarker-corpus'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7c/b7/8cb61d2eece5fb05a83271da168186721c450eb74e3c31f7ef3169fa475b/huggingface_hub-0.36.2.tar.gz", hash = "sha256:1934304d2fb224f8afa3b87007d58501acfda9215b334eed53072dd5e815ff7a", size = 649782, upload-time = "2026-02-06T09:24:13.098Z" }
 wheels = [
@@ -1267,6 +1267,18 @@ wheels = [
 ]
 
 [[package]]
+name = "py3langid"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/16/fc/51c88e5ef8346878ae6c09e1f7c86c6e6308c57794723bf423a72ddba4dd/py3langid-0.4.0.tar.gz", hash = "sha256:5924159039b5cc282c2edc10a7ea9363b2099834a0e99ed8d5bea3cc435d7871", size = 4604185, upload-time = "2026-09-02T09:10:53.983Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/2d/0eeff2727c970b1d553be70d15ba2d84e3830696c09a79d954c5ae3d5212/py3langid-0.4.0-py3-none-any.whl", hash = "sha256:c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616", size = 4600605, upload-time = "2026-09-02T09:10:49.54Z" },
+]
+
+[[package]]
 name = "pyarrow"
 version = "25.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1594,6 +1606,7 @@ corpus = [
     { name = "datasketch" },
     { name = "datatrove" },
     { name = "fasttext-wheel" },
+    { name = "py3langid" },
     { name = "tldextract" },
 ]
 dev = [
@@ -1638,6 +1651,7 @@ requires-dist = [
     { name = "optimum", marker = "extra == 'export'", specifier = ">=2.1" },
     { name = "optimum-onnx", marker = "extra == 'export'", specifier = "==0.1.0" },
     { name = "pandas", marker = "extra == 'train'", specifier = ">=2.2" },
+    { name = "py3langid", marker = "extra == 'corpus'", specifier = ">=0.4.0" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
