@@ -121,7 +121,7 @@ def _before_cutoff(date: str | None, cutoff: str) -> bool:
 
 def harvest_fineweb(
     *,
-    dumps: tuple[str, ...] = FINEWEB_DUMPS,
+    dump: str = FINEWEB_DUMPS[0],
     cutoff: str = "2022-01-01",
     limit: int | None = None,
     corporate_hosts: frozenset[str] = frozenset(),
@@ -131,8 +131,12 @@ def harvest_fineweb(
 ) -> Iterator[DocumentRow]:
     """FineWeb, routed by URL. The only source that can supply hard negatives at scale.
 
-    `sample` selects a named subset (e.g. "sample-10BT") for pilot runs; the full
-    harvest passes None and filters on `dump` instead.
+    Each CommonCrawl dump is its own dataset config, so the dump is *loaded* rather
+    than filtered for. Streaming the whole dataset and testing `row["dump"]` would work
+    but is pathologically slow: FineWeb is ordered by dump, so reaching a 2021 crawl
+    means streaming every row from 2013 onward first.
+
+    `sample` selects a named subset (e.g. "sample-10BT") for pilot runs.
 
     `keep_natural_rate` subsamples documents that matched no routing rule. Emitting
     every one of them would swamp the hard negatives -- routed URLs are ~6.5% of the
@@ -146,15 +150,11 @@ def harvest_fineweb(
 
     rng = random.Random(0xC0FFEE + (shard[0] if shard else 0))
 
-    kwargs: dict[str, Any] = {"streaming": True, "split": "train"}
-    if sample:
-        kwargs["name"] = sample
+    kwargs: dict[str, Any] = {"streaming": True, "split": "train", "name": sample or dump}
     dataset = _shard(load_dataset("HuggingFaceFW/fineweb", **kwargs), shard)
 
     emitted = 0
     for row in dataset:
-        if not sample and row["dump"] not in dumps:
-            continue
         if not _before_cutoff(row.get("date"), cutoff):
             continue
         url = row.get("url") or ""
@@ -228,8 +228,15 @@ def harvest_pile(
     subsets: dict[str, Genre] | None = None,
     limit_per_subset: int | None = None,
     shard: Shard = None,
+    max_scan: int = 4_000_000,
 ) -> Iterator[DocumentRow]:
-    """The Pile, routed by subset. Collected in 2020, so entirely pre-cutoff."""
+    """The Pile, routed by subset. Collected in 2020, so entirely pre-cutoff.
+
+    `max_scan` bounds the stream. Subset frequencies differ by three orders of
+    magnitude -- Pile-CC is ~30% of rows, PhilPapers under 0.1% -- so waiting for every
+    subset to reach its quota would mean streaming the whole 335GB dataset to fill the
+    rarest one.
+    """
     from datasets import load_dataset
 
     subsets = subsets or PILE_GENRES
@@ -242,6 +249,8 @@ def harvest_pile(
         genre = subsets.get(name)
         if genre is None:
             continue
+        if index >= max_scan:
+            return
         if limit_per_subset is not None:
             if counts.get(name, 0) >= limit_per_subset:
                 if all(counts.get(s, 0) >= limit_per_subset for s in subsets):

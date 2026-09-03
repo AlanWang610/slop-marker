@@ -103,6 +103,10 @@ def entities_of(doc: DocumentRow, limit: int = 6) -> tuple[str, ...]:
 
 def seed_card(doc: DocumentRow) -> SeedCard:
     words = doc.n_words or count_words(doc.text)
+    # The prefix is sized from the *capped* target, not the raw document. Seeds run to
+    # 20k words, and taking 30% of that produced 5000-word continuation rows -- five
+    # times the intended length, and enough to dominate the window sampler.
+    target_words = max(120, min(900, words))
     return SeedCard(
         doc_id=doc.doc_id,
         genre=doc.genre if doc.genre != "other" else "blog_personal",
@@ -110,11 +114,11 @@ def seed_card(doc: DocumentRow) -> SeedCard:
         entities=entities_of(doc),
         # The seed's own length and shape, which is what keeps length and structure
         # from carrying label information.
-        target_words=max(120, min(900, words)),
+        target_words=target_words,
         headings=len(HEADING.findall(doc.text)),
         lists=len(BULLET.findall(doc.text)),
         publication_type=_publication_type(doc.genre),
-        prefix=_prefix_of(doc.text, words),
+        prefix=_prefix_of(doc.text, target_words),
         text=doc.text,
     )
 
@@ -133,10 +137,10 @@ def _publication_type(genre: Genre) -> str:
     }.get(genre, "an article")
 
 
-def _prefix_of(text: str, words: int) -> str:
-    """The opening 15-40% of a document, cut at a sentence boundary."""
+def _prefix_of(text: str, target_words: int) -> str:
+    """The opening ~30% of the target length, cut at a sentence boundary."""
     text = collapse_whitespace(text)
-    target = max(40, int(words * 0.3))
+    target = max(40, int(target_words * 0.3))
     kept, total = [], 0
     for start, end in split_sentences(text):
         sentence = text[start:end]

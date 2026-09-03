@@ -24,7 +24,9 @@ app = modal.App(APP_NAME)
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
 hf_cache = modal.Volume.from_name("slopmarker-hf-cache", create_if_missing=True)
 
-image = (
+# Local files must be added last, so the shared base carries only packages and both
+# concrete images append their own mounts.
+base_image = (
     modal.Image.debian_slim(python_version="3.12")
     .uv_pip_install(
         "datasets>=3",
@@ -39,9 +41,16 @@ image = (
         "zstandard>=0.23",
     )
     .env({"HF_HOME": "/hf-cache", "HF_HUB_DISABLE_PROGRESS_BARS": "1"})
-    .add_local_python_source("slopmarker")
-    .add_local_dir("configs", remote_path="/root/configs")
 )
+
+
+def _with_local(img: modal.Image) -> modal.Image:
+    return img.add_local_python_source("slopmarker").add_local_dir(
+        "configs", remote_path="/root/configs"
+    )
+
+
+image = _with_local(base_image)
 
 hf_secret = modal.Secret.from_name("huggingface")
 llm_secrets = [
@@ -50,7 +59,7 @@ llm_secrets = [
     modal.Secret.from_name("gemini-api-secret"),
 ]
 
-gen_image = image.uv_pip_install("anthropic", "openai", "google-genai")
+gen_image = _with_local(base_image.uv_pip_install("anthropic", "openai", "google-genai"))
 
 VOLUMES = {DATA_ROOT: volume, "/hf-cache": hf_cache}
 
@@ -80,6 +89,7 @@ def harvest_shard(
     limit: int | None = None,
     fineweb_sample: str | None = None,
     keep_natural_rate: float = 0.25,
+    config: str | None = None,
 ) -> dict[str, Any]:
     """Harvest and clean one shard of one source."""
     from pathlib import Path
@@ -90,7 +100,7 @@ def harvest_shard(
 
     root = Path(DATA_ROOT)
     cfg = _config()
-    name = f"{source}-{shard_index:05d}"
+    name = f"{source}-{config}-{shard_index:05d}" if config else f"{source}-{shard_index:05d}"
     if is_done(root, "interim", cfg.short_hash, name):
         return read_summary(root, "interim", cfg.short_hash, name)
 
@@ -102,6 +112,8 @@ def harvest_shard(
         kwargs["keep_natural_rate"] = keep_natural_rate
         if fineweb_sample:
             kwargs["sample"] = fineweb_sample
+        elif config:
+            kwargs["dump"] = config
     if source == "reddit":
         kwargs.pop("limit", None)
         if limit is not None:

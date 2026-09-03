@@ -18,23 +18,27 @@ import modal
 
 APP = "slopmarker-corpus"
 
-# (source, shards, limit per shard, keep_natural_rate)
-PLANS: dict[str, list[tuple[str, int, int, float]]] = {
+# (source, shards, limit per shard, keep_natural_rate, config)
+Plan = list[tuple[str, int, int, float, str | None]]
+
+PLANS: dict[str, Plan] = {
     "pilot": [
-        ("fineweb", 4, 500, 0.10),
-        ("cc_news", 2, 500, 0.0),
-        ("pile", 2, 200, 0.0),
-        ("pes2o", 2, 300, 0.0),
-        ("reddit", 2, 400, 0.0),
+        ("fineweb", 2, 400, 0.10, "CC-MAIN-2021-49"),
+        ("cc_news", 2, 500, 0.0, None),
+        ("pile", 2, 200, 0.0, None),
     ],
-    "full": [
-        # FineWeb carries the genres no curated corpus supplies: press releases,
-        # SEO copy, corporate blogs, templated product pages, non-native forums.
-        ("fineweb", 16, 5000, 0.10),
-        ("cc_news", 8, 8000, 0.0),
-        ("pile", 6, 2500, 0.0),
-        ("pes2o", 6, 4000, 0.0),
-        ("reddit", 10, 6000, 0.0),
+    # FineWeb carries the genres no curated corpus supplies: press releases, SEO copy,
+    # corporate blogs, templated product pages, non-native forums. Each dump is loaded
+    # as its own config rather than filtered out of the full stream.
+    "fineweb": [
+        ("fineweb", 12, 6000, 0.10, "CC-MAIN-2021-49"),
+        ("fineweb", 12, 6000, 0.10, "CC-MAIN-2019-51"),
+    ],
+    "rest": [
+        ("cc_news", 5, 12000, 0.0, None),
+        ("pile", 6, 2500, 0.0, None),
+        ("pes2o", 6, 4000, 0.0, None),
+        ("reddit", 10, 6000, 0.0, None),
     ],
 }
 
@@ -44,14 +48,17 @@ STATE = Path(__file__).resolve().parent / ".harvest_calls.json"
 def spawn(plan: str) -> None:
     harvest = modal.Function.from_name(APP, "harvest_shard")
     calls = []
-    for source, shards, limit, natural in PLANS[plan]:
+    for source, shards, limit, natural, config in PLANS[plan]:
         for index in range(shards):
-            call = harvest.spawn(source, index, shards, limit, None, natural)
-            calls.append({"id": call.object_id, "source": source, "shard": index})
-    STATE.write_text(json.dumps(calls, indent=2), encoding="utf-8")
+            call = harvest.spawn(source, index, shards, limit, None, natural, config)
+            calls.append(
+                {"id": call.object_id, "source": source, "shard": index, "config": config}
+            )
+    existing = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else []
+    STATE.write_text(json.dumps(existing + calls, indent=2), encoding="utf-8")
     print(f"spawned {len(calls)} shards for plan '{plan}'")
-    for source, shards, limit, _ in PLANS[plan]:
-        print(f"   {source:10} {shards} shards x {limit}")
+    for source, shards, limit, _, config in PLANS[plan]:
+        print(f"   {source:10} {shards} shards x {limit} {config or ''}")
 
 
 def status() -> None:
