@@ -1,0 +1,85 @@
+# Corpus construction config. The hash of this file keys the resume markers, so a
+# change here invalidates exactly the stages it affects and nothing else.
+
+# Seeds. Changing either regenerates the corpus; treat them as part of its identity.
+corpus_seed: 20260903
+split_salt: "slopmarker-v1"
+
+# Windows are the binding quota, not documents. Four of the eight genres are
+# intrinsically short-form, so real documents yield ~3 windows each rather than 5.
+targets:
+  human_windows: 750000
+  ai_windows: 750000
+
+# scope.md 4.3: 40-400 words, weighted toward 80-250. Written out as explicit buckets
+# rather than a parametric distribution so it can be read and tuned directly.
+# (min_words, max_words, weight)
+window_buckets:
+  - [40, 80, 0.10]
+  - [80, 130, 0.20]
+  - [130, 170, 0.30]
+  - [170, 250, 0.20]
+  - [250, 400, 0.20]
+max_windows_per_document: 10
+
+# Per-genre window targets for the human side. Hard negatives are ~51% of the total,
+# against a natural-web prior of 10-15%. Do not push past ~55%: at least 15% of the
+# human side must stay unrouted natural web, or the model's notion of "human" drifts
+# and ordinary prose starts scoring oddly.
+genre_targets:
+  news: 90000
+  product_marketing: 120000
+  press_release: 75000
+  forum_comment: 120000
+  blog_personal: 105000
+  technical_docs: 75000
+  encyclopedia: 75000
+  academic_formal: 90000
+
+min_natural_fraction: 0.15
+
+# Everything authored after this is presumed contaminated by LLM text. Asserted per
+# row, not per source: one violating row fails its shard loudly.
+max_date: "2022-01-01"
+
+cleaning:
+  min_words: 120 # headroom for at least one 40+ word window with slack
+  max_words: 20000
+  min_sentences: 3
+  language: en
+  min_language_score: 0.85
+  # Non-native English is mined from just above the general gate. This is a proxy, not
+  # a measurement; expect 60-75% precision and report it rather than assuming it.
+  l2_language_score_range: [0.65, 0.90]
+
+dedup:
+  shingle_words: 5
+  num_permutations: 112
+  bands: 14
+  jaccard_threshold: 0.8
+
+# RAID is the external eval (scope.md 4.6), so its human side must not reach training.
+decontamination:
+  raid_jaccard_threshold: 0.7
+  raid_ngram: 13
+  raid_ngram_overlap: 0.02
+
+# No single source may dominate a genre, and no near-duplicate cluster may contribute
+# more than a handful of documents.
+caps:
+  max_host_fraction_per_genre: 0.005
+  max_source_fraction: 0.35
+  max_documents_per_cluster: 3
+
+splits:
+  train: 0.80
+  val: 0.05
+  calibration: 0.075
+  test: 0.075
+  # Calibration must support estimating a 2% tail per genre with a usable interval.
+  min_human_windows_per_genre_in_calibration: 5000
+  # Domains reserved for test only, to measure host-template memorization.
+  held_out_domains_per_genre: 10
+
+# Hard stop, enforced in code: the submitter refuses the next batch past this.
+budget_usd: 5000
