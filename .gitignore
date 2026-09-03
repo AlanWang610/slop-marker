@@ -1,0 +1,80 @@
+# ─── Secrets & signing material ───────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+# Chrome CRX private key
+*.pem
+*.p12
+*.jks
+# AMO JWT issuer/secret for web-ext sign
+amo-credentials*
+.claude/settings.local.json
+
+# ─── Large or regenerable artifacts (never committed) ─────────────────────────
+# Corpora: raw crawl slices, generated AI text, attack variants, splits.
+data/*
+!data/README.md
+# Checkpoints, training runs, ONNX exports, assembled model bundles.
+artifacts/*
+!artifacts/README.md
+# Staging copy of what gets uploaded to the static model host.
+model-host/*
+!model-host/README.md
+
+# Model weights / graphs, wherever they land
+*.onnx
+*.onnx_data
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.msgpack
+*.gguf
+# ORT runtime binaries are copied from node_modules at build
+*.wasm
+
+# Experiment tracking / HF caches
+wandb/
+mlruns/
+lightning_logs/
+.cache/
+hf_cache/
+
+# ─── Python (training/) ───────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+uv.lock.tmp
+
+# ─── Node / extension build ───────────────────────────────────────────────────
+node_modules/
+dist/
+.vite/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+# Packaged extensions
+web-ext-artifacts/
+*.crx
+*.xpi
+*.zip
+
+# ─── Editors / OS ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Scratch ──────────────────────────────────────────────────────────────────
+scratch/
+tmp/
+*.log
