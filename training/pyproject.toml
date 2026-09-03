@@ -39,11 +39,14 @@ export = [
 # (liamdugan/raid), so eval/raid.py reads it with `datasets` and scores it with our own
 # metrics. A leaderboard submission, if we ever make one, runs raid-bench via uvx.
 evaluate = ["scikit-learn>=1.5"]
+# datasketch rather than datatrove for near-duplicate detection: at ~550k documents a
+# single in-memory MinHashLSH fits comfortably, and datatrove's band-partitioned
+# multi-stage pipeline buys nothing at this scale. py3langid rather than fastText
+# because it is pure Python, needs no 126MB model download, and runs in local tests.
 corpus = [
-    "datatrove>=0.10",
+    "datasets>=3",
     "datasketch>=1.6",
     "tldextract>=5",
-    "fasttext-wheel>=0.9",
     "py3langid>=0.4.0",
 ]
 modal = ["modal>=1.0"]
@@ -67,6 +70,9 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+# Modal's decorators are untyped, so every @app.function would be reported as
+# making its target untyped. The module is thin glue; the logic it calls is checked.
+exclude = ['modal_app\.py$']
 
 [[tool.mypy.overrides]]
 module = [
