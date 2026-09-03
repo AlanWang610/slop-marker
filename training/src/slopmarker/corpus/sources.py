@@ -100,6 +100,12 @@ def _shard(dataset: Any, shard: Shard) -> Any:
     index, num_shards = shard
     if num_shards <= 1:
         return dataset
+    # A dataset with fewer files than shards raises "list index out of range" on the
+    # high indices rather than yielding nothing. Those shards have no work to do, so
+    # hand them an empty stream; the lower shards still cover every file.
+    available = getattr(dataset, "num_shards", None)
+    if available is not None and index >= available:
+        return dataset.take(0)
     return dataset.shard(num_shards=num_shards, index=index)
 
 
