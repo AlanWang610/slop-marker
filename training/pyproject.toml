@@ -72,13 +72,16 @@ strict = true
 mypy_path = "src"
 # Modal's decorators are untyped, so every @app.function would be reported as
 # making its target untyped. The module is thin glue; the logic it calls is checked.
-exclude = ['modal_app\.py$']
+# Modal glue: untyped decorators, and provider SDKs absent from the local env.
+exclude = ['modal_app\.py$', 'scripts/(probe|discover)_.*\.py$']
 
 [[tool.mypy.overrides]]
 module = [
     "transformers.*", "optimum.*", "onnx.*", "onnxruntime.*", "torch.*",
     "datasets.*", "datatrove.*", "datasketch.*", "modal", "modal.*",
     "wandb", "raid.*", "sklearn.*", "scipy.*", "py3langid.*", "tldextract.*",
+    # Provider SDKs are installed only in the Modal generation image.
+    "anthropic", "anthropic.*", "openai", "openai.*", "google.*",
 ]
 ignore_missing_imports = true
 

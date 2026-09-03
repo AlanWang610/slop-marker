@@ -44,6 +44,13 @@ image = (
 )
 
 hf_secret = modal.Secret.from_name("huggingface")
+llm_secrets = [
+    modal.Secret.from_name("anthropic-api-key"),
+    modal.Secret.from_name("openai-secret"),
+    modal.Secret.from_name("gemini-api-secret"),
+]
+
+gen_image = image.uv_pip_install("anthropic", "openai", "google-genai")
 
 VOLUMES = {DATA_ROOT: volume, "/hf-cache": hf_cache}
 
@@ -118,6 +125,62 @@ def harvest_shard(
     volume.commit()
     summary = {"source": source, "shard": shard_index, "kept": written, "dropped": dropped}
     mark_done(root, "interim", cfg.short_hash, name, summary)
+    volume.commit()
+    return summary
+
+
+@app.function(
+    image=gen_image,
+    volumes=VOLUMES,
+    secrets=[*llm_secrets, hf_secret],
+    cpu=2.0,
+    memory=8192,
+    timeout=6 * 3600,
+    retries=modal.Retries(max_retries=2, backoff_coefficient=2.0),
+)
+def generate_shard(
+    shard_index: int, num_shards: int, per_shard: int, workers: int = 24
+) -> dict[str, Any]:
+    """Generate one shard of the AI side from harvested human seeds."""
+    import random
+    from pathlib import Path
+
+    from slopmarker.corpus.build import load_documents
+    from slopmarker.corpus.generate import plan_tasks, run_tasks
+    from slopmarker.corpus.providers import ALL_MODELS
+    from slopmarker.corpus.state import is_done, mark_done, read_summary, shard_path, write_shard
+
+    root = Path(DATA_ROOT)
+    cfg = _config()
+    name = f"gen-{shard_index:05d}"
+    if is_done(root, "generated", cfg.short_hash, name):
+        return read_summary(root, "generated", cfg.short_hash, name)
+
+    volume.reload()
+    human = load_documents(root)
+    # Deterministic, disjoint seed slice per shard.
+    human.sort(key=lambda d: d.doc_id)
+    mine = human[shard_index::num_shards]
+    random.Random(cfg.corpus_seed + shard_index).shuffle(mine)
+    seeds = [d for d in mine if d.n_words >= 150][:per_shard]
+
+    tasks = plan_tasks(seeds, ALL_MODELS, seed=cfg.corpus_seed + shard_index)
+    rows, by_model, by_style = [], {}, {}
+    for row in run_tasks(tasks, workers=workers):
+        rows.append(row.to_json())
+        by_model[row.generator] = by_model.get(row.generator, 0) + 1
+        by_style[row.prompt_style] = by_style.get(row.prompt_style, 0) + 1
+
+    written = write_shard(shard_path(root, "generated", name), rows)
+    volume.commit()
+    summary = {
+        "shard": shard_index,
+        "seeds": len(seeds),
+        "generated": written,
+        "by_model": by_model,
+        "by_style": by_style,
+    }
+    mark_done(root, "generated", cfg.short_hash, name, summary)
     volume.commit()
     return summary
 

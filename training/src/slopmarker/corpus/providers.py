@@ -248,5 +248,7 @@ GENERATORS = {
 }
 
 
-def generate(spec: ModelSpec, system: str, user: str, target_words: int, cell: dict[str, Any]):
+def generate(
+    spec: ModelSpec, system: str, user: str, target_words: int, cell: dict[str, Any]
+) -> Generation:
     return GENERATORS[spec.provider](spec.name, system, user, target_words, cell)

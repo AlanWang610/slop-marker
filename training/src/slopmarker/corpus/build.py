@@ -47,7 +47,10 @@ def load_raid_index(root: Path) -> RaidIndex | None:
 
 
 def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
-    documents = load_documents(root)
+    # Both halves of the corpus. The cross-class dedup below is why they are loaded
+    # together: rewrite and continuation rows are seeded from human documents, so
+    # near-duplicate pairs straddling the class boundary are guaranteed otherwise.
+    documents = load_documents(root, "interim") + load_documents(root, "generated")
     stats: dict[str, Any] = {"version": version, "harvested": len(documents)}
     if not documents:
         return stats

@@ -91,7 +91,7 @@ class DocumentRow:
     seed_doc_id: str | None = None  # human document this was generated from
     seed_cluster_id: str | None = None  # THE SPLIT UNIT: seed plus all its derivatives
     generator: str | None = None
-    generator_provider: Literal["anthropic", "openai", "google", "vllm"] | None = None
+    generator_provider: Literal["anthropic", "openai", "gemini"] | None = None
     prompt_style: PromptStyle | None = None
     prompt_version: str | None = None
     sampling_params: dict[str, Any] | None = None
