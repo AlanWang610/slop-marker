@@ -25,6 +25,8 @@ from slopmarker.data.normalize import (  # noqa: E402
     normalize_for_hash,
 )
 from slopmarker.data.sentences import sentences  # noqa: E402
+from slopmarker.eval.aggregate import Chunk, aggregate  # noqa: E402
+from slopmarker.eval.calibration import AggregateParams, Calibration  # noqa: E402
 
 # (name, input). Each case pins one hazard.
 NORMALIZE_CASES: list[tuple[str, str]] = [
@@ -156,6 +158,95 @@ def build_windows() -> dict[str, object]:
     }
 
 
+# Deliberately synthetic, NOT the shipped calibration. If these were the real constants,
+# every recalibration would invalidate the extension's test suite for no reason.
+SYNTHETIC = Calibration(
+    version="fixture-only",
+    temperature=1.25,
+    t_on=0.90,
+    t_off=0.80,
+    min_words=40,
+    aggregate=AggregateParams(
+        length_penalty_words=80,
+        run_min_words=150,
+        doc_prior_min_fraction=0.20,
+        doc_prior_bump_logodds=0.25,
+    ),
+)
+# t_on close to 1.0, to pin the case where scope.md 8's probability-space bump would
+# have produced an unreachable threshold above 1.0.
+HIGH_T_ON = Calibration(
+    version="fixture-only-high",
+    temperature=1.0,
+    t_on=0.97,
+    t_off=0.87,
+    min_words=40,
+)
+
+# (name, calibration, chunks as (logit, words))
+AGGREGATE_CASES: list[tuple[str, Calibration, list[tuple[float, int]]]] = [
+    ("empty", SYNTHETIC, []),
+    ("all-below-t-off", SYNTHETIC, [(-3.0, 200), (-2.5, 200), (-4.0, 200)]),
+    ("single-short-chunk-above-t-on-not-flagged", SYNTHETIC, [(4.0, 60)]),
+    ("single-long-chunk-under-run-minimum", SYNTHETIC, [(4.0, 140)]),
+    ("single-long-chunk-at-run-minimum", SYNTHETIC, [(4.0, 150)]),
+    ("two-chunks-reach-run-minimum", SYNTHETIC, [(4.0, 90), (3.5, 90)]),
+    (
+        "mid-band-chunk-extends-run",
+        SYNTHETIC,
+        # logit 2.2 at T=1.25 -> p=0.853, between t_off (0.80) and t_on (0.90):
+        # too low to open a run, high enough to keep one going.
+        [(4.0, 100), (2.2, 100), (4.0, 100), (-3.0, 100)],
+    ),
+    (
+        "below-t-off-chunk-breaks-run",
+        SYNTHETIC,
+        [(4.0, 100), (-3.0, 100), (4.0, 100)],
+    ),
+    # 1 of 10 chunks above t_off -> 1 < 2.0 -> prior fires.
+    ("doc-prior-fires", SYNTHETIC, [(4.0, 200)] + [(-4.0, 200)] * 9),
+    # 2 of 10 above t_off -> 2 < 2.0 is false -> prior does not fire.
+    ("doc-prior-not-firing-at-exactly-20-percent", SYNTHETIC, [(4.0, 200)] * 2 + [(-4.0, 200)] * 8),
+    # The regression case: t_on 0.97 + prior bump must stay inside (0, 1).
+    ("doc-prior-bump-stays-below-one", HIGH_T_ON, [(6.0, 200)] + [(-6.0, 200)] * 9),
+    ("length-penalty-cannot-flag-short-chunk-alone", SYNTHETIC, [(8.0, 40)]),
+]
+
+
+def build_aggregate() -> dict[str, object]:
+    cases = []
+    for name, cal, raw in AGGREGATE_CASES:
+        chunks = [Chunk(logit=lg, words=w) for lg, w in raw]
+        result = aggregate(chunks, cal)
+        cases.append(
+            {
+                "name": name,
+                "calibration": json.loads(cal.to_json()),
+                "chunks": [{"logit": c.logit, "words": c.words} for c in chunks],
+                "expected": {
+                    "t_on_effective": result.t_on_effective,
+                    "chunk_p": result.chunk_p,
+                    "chunk_p_penalized": result.chunk_p_penalized,
+                    "runs": [
+                        {
+                            "start": r.start,
+                            "end": r.end,
+                            "words": r.words,
+                            "score": r.score,
+                            "flagged": r.flagged,
+                        }
+                        for r in result.runs
+                    ],
+                },
+            }
+        )
+    return {
+        "version": 1,
+        "note": "calibration constants here are synthetic, never the shipped ones",
+        "cases": cases,
+    }
+
+
 def write(path: Path, payload: dict[str, object]) -> None:
     path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
@@ -169,6 +260,7 @@ def main() -> None:
     out = ROOT / "fixtures"
     write(out / "normalize.json", build_normalize())
     write(out / "windows.json", build_windows())
+    write(out / "aggregate.json", build_aggregate())
 
 
 if __name__ == "__main__":

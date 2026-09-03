@@ -8,6 +8,7 @@ regenerate deliberately and review the diff, because it is also an extension cha
 from __future__ import annotations
 
 import json
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,8 @@ from slopmarker.data.normalize import (
     normalize_for_hash,
 )
 from slopmarker.data.sentences import sentences
+from slopmarker.eval.aggregate import Chunk, aggregate
+from slopmarker.eval.calibration import Calibration
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 
@@ -67,6 +70,51 @@ def test_chunks_respect_max_words() -> None:
         if len(chunks) <= 1:
             continue
         assert all(c["words"] <= case["max_words"] for c in chunks), case["name"]
+
+
+@pytest.mark.parametrize("case", cases("aggregate.json", "cases"))
+def test_aggregate(case: dict) -> None:
+    cal = Calibration.from_json(json.dumps(case["calibration"]))
+    chunks = [Chunk(logit=c["logit"], words=c["words"]) for c in case["chunks"]]
+    got = aggregate(chunks, cal)
+    want = case["expected"]
+
+    assert got.t_on_effective == pytest.approx(want["t_on_effective"])
+    assert got.chunk_p == pytest.approx(want["chunk_p"])
+    assert got.chunk_p_penalized == pytest.approx(want["chunk_p_penalized"])
+    assert len(got.runs) == len(want["runs"])
+    for run, expected in zip(got.runs, want["runs"], strict=True):
+        assert (run.start, run.end, run.words) == (
+            expected["start"],
+            expected["end"],
+            expected["words"],
+        )
+        assert run.score == pytest.approx(expected["score"])
+        assert run.flagged is expected["flagged"]
+
+
+def test_doc_prior_bump_never_reaches_one() -> None:
+    """The scope.md 8 regression: a probability-space +0.05 bump would exceed 1.0 here."""
+    for t_on in (0.90, 0.95, 0.97, 0.99, 0.999):
+        cal = Calibration(version="t", temperature=1.0, t_on=t_on, t_off=t_on / 2)
+        sparse = [Chunk(-6.0, 200)] * 10
+        assert 0.0 < aggregate(sparse, cal).t_on_effective < 1.0
+
+
+def test_short_chunk_cannot_flag_alone() -> None:
+    """A sub-run_min_words chunk can extend a run but never constitute one."""
+    cal = Calibration(version="t", temperature=1.0, t_on=0.90, t_off=0.80)
+    for words in range(1, cal.aggregate.run_min_words):
+        result = aggregate([Chunk(20.0, words)], cal)
+        assert result.flagged_runs == []
+
+
+def test_runs_are_disjoint_and_ordered() -> None:
+    cal = Calibration(version="t", temperature=1.0, t_on=0.90, t_off=0.80)
+    chunks = [Chunk(lg, 100) for lg in (5.0, 1.5, -5.0, 5.0, 5.0, -5.0, 5.0)]
+    runs = aggregate(chunks, cal).runs
+    for earlier, later in pairwise(runs):
+        assert earlier.end < later.start
 
 
 def test_hash_ignores_typography_but_model_input_does_not() -> None:

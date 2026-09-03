@@ -1,0 +1,686 @@
+{
+  "version": 1,
+  "note": "calibration constants here are synthetic, never the shipped ones",
+  "cases": [
+    {
+      "name": "empty",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [],
+      "expected": {
+        "t_on_effective": 0.9,
+        "chunk_p": [],
+        "chunk_p_penalized": [],
+        "runs": []
+      }
+    },
+    {
+      "name": "all-below-t-off",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": -3.0,
+          "words": 200
+        },
+        {
+          "logit": -2.5,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9203582524741043,
+        "chunk_p": [
+          0.08317269649392238,
+          0.11920292202211755,
+          0.039165722796764356
+        ],
+        "chunk_p_penalized": [
+          0.08317269649392238,
+          0.11920292202211755,
+          0.039165722796764356
+        ],
+        "runs": []
+      }
+    },
+    {
+      "name": "single-short-chunk-above-t-on-not-flagged",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 4.0,
+          "words": 60
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9,
+        "chunk_p": [
+          0.9608342772032357
+        ],
+        "chunk_p_penalized": [
+          0.8456257079024267
+        ],
+        "runs": []
+      }
+    },
+    {
+      "name": "single-long-chunk-under-run-minimum",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 4.0,
+          "words": 140
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9,
+        "chunk_p": [
+          0.9608342772032357
+        ],
+        "chunk_p_penalized": [
+          0.9608342772032357
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 140,
+            "score": 0.9608342772032357,
+            "flagged": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "single-long-chunk-at-run-minimum",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 4.0,
+          "words": 150
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9,
+        "chunk_p": [
+          0.9608342772032357
+        ],
+        "chunk_p_penalized": [
+          0.9608342772032357
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 150,
+            "score": 0.9608342772032357,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "two-chunks-reach-run-minimum",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 4.0,
+          "words": 90
+        },
+        {
+          "logit": 3.5,
+          "words": 90
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9,
+        "chunk_p": [
+          0.9608342772032357,
+          0.9426758241011313
+        ],
+        "chunk_p_penalized": [
+          0.9608342772032357,
+          0.9426758241011313
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 1,
+            "words": 180,
+            "score": 0.9525741268224334,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "mid-band-chunk-extends-run",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 4.0,
+          "words": 100
+        },
+        {
+          "logit": 2.2,
+          "words": 100
+        },
+        {
+          "logit": 4.0,
+          "words": 100
+        },
+        {
+          "logit": -3.0,
+          "words": 100
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9,
+        "chunk_p": [
+          0.9608342772032357,
+          0.8532096601986177,
+          0.9608342772032357,
+          0.08317269649392238
+        ],
+        "chunk_p_penalized": [
+          0.9608342772032357,
+          0.8532096601986177,
+          0.9608342772032357,
+          0.08317269649392238
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 2,
+            "words": 300,
+            "score": 0.9381965337364114,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "below-t-off-chunk-breaks-run",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 4.0,
+          "words": 100
+        },
+        {
+          "logit": -3.0,
+          "words": 100
+        },
+        {
+          "logit": 4.0,
+          "words": 100
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9,
+        "chunk_p": [
+          0.9608342772032357,
+          0.08317269649392238,
+          0.9608342772032357
+        ],
+        "chunk_p_penalized": [
+          0.9608342772032357,
+          0.08317269649392238,
+          0.9608342772032357
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 100,
+            "score": 0.9608342772032357,
+            "flagged": false
+          },
+          {
+            "start": 2,
+            "end": 2,
+            "words": 100,
+            "score": 0.9608342772032357,
+            "flagged": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "doc-prior-fires",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9203582524741043,
+        "chunk_p": [
+          0.9608342772032357,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356
+        ],
+        "chunk_p_penalized": [
+          0.9608342772032357,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 200,
+            "score": 0.9608342772032357,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "doc-prior-not-firing-at-exactly-20-percent",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 4.0,
+          "words": 200
+        },
+        {
+          "logit": 4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        },
+        {
+          "logit": -4.0,
+          "words": 200
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9,
+        "chunk_p": [
+          0.9608342772032357,
+          0.9608342772032357,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356
+        ],
+        "chunk_p_penalized": [
+          0.9608342772032357,
+          0.9608342772032357,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356,
+          0.039165722796764356
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 1,
+            "words": 400,
+            "score": 0.9608342772032357,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "doc-prior-bump-stays-below-one",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only-high",
+        "temperature": 1.0,
+        "t_on": 0.97,
+        "t_off": 0.87,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        },
+        {
+          "logit": -6.0,
+          "words": 200
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9764798976612756,
+        "chunk_p": [
+          0.9975273768433653,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743
+        ],
+        "chunk_p_penalized": [
+          0.9975273768433653,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743,
+          0.0024726231566347743
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 200,
+            "score": 0.9975273768433653,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "length-penalty-cannot-flag-short-chunk-alone",
+      "calibration": {
+        "schema_version": 1,
+        "version": "fixture-only",
+        "temperature": 1.25,
+        "t_on": 0.9,
+        "t_off": 0.8,
+        "min_words": 40,
+        "max_length": 512,
+        "aggregate": {
+          "length_penalty_words": 80,
+          "run_min_words": 150,
+          "doc_prior_min_fraction": 0.2,
+          "doc_prior_bump_logodds": 0.25
+        }
+      },
+      "chunks": [
+        {
+          "logit": 8.0,
+          "words": 40
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.9203582524741043,
+        "chunk_p": [
+          0.9983411989198255
+        ],
+        "chunk_p_penalized": [
+          0.7491705994599127
+        ],
+        "runs": []
+      }
+    }
+  ]
+}
