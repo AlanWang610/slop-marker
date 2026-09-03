@@ -1,0 +1,262 @@
+{
+  "version": 1,
+  "note": "collapsed = model input; normalized = hash input; sha256 = sha256(normalized)",
+  "cases": [
+    {
+      "name": "plain",
+      "input": "The quick brown fox.",
+      "collapsed": "The quick brown fox.",
+      "normalized": "The quick brown fox.",
+      "sha256": "42e25dd386eb55b56db34af535fab5231db8cf1b588af95bc9c32ef849507fc5",
+      "words": 4
+    },
+    {
+      "name": "leading-trailing-space",
+      "input": "   padded text   ",
+      "collapsed": "padded text",
+      "normalized": "padded text",
+      "sha256": "fbafe14f54b7e4e1f9fb142107c1e20146b7483a37b77329f1e2b6395834367f",
+      "words": 2
+    },
+    {
+      "name": "tab-and-newline",
+      "input": "line one\tand\nline two",
+      "collapsed": "line one and line two",
+      "normalized": "line one and line two",
+      "sha256": "5e37e55ece1cbb18c31f754920e4f743418e1bd2062b4542d33c573e7f224d3e",
+      "words": 5
+    },
+    {
+      "name": "collapse-runs",
+      "input": "many     spaces    here",
+      "collapsed": "many spaces here",
+      "normalized": "many spaces here",
+      "sha256": "553d580475e7fc1c45df76e2f87b04f7a5cf53867a89832f5ba6b9d2facd2c2f",
+      "words": 3
+    },
+    {
+      "name": "crlf",
+      "input": "line one\r\nline two",
+      "collapsed": "line one line two",
+      "normalized": "line one line two",
+      "sha256": "e490ed577595f61675761642aa202c2f1f59ef292f58c24fe0b431b05eeb86ec",
+      "words": 4
+    },
+    {
+      "name": "nbsp",
+      "input": "Al dente tips",
+      "collapsed": "Al dente tips",
+      "normalized": "Al dente tips",
+      "sha256": "be726a19123884d5063a8638782c2221b4879649a98eba9ad4550d42ad5b49b8",
+      "words": 3
+    },
+    {
+      "name": "zero-width-space",
+      "input": "hid​den",
+      "collapsed": "hid​den",
+      "normalized": "hidden",
+      "sha256": "e564b4081d7a9ea4b00dada53bdae70c99b87b6fce869f0c3dd4d2bfa1e53e1c",
+      "words": 1
+    },
+    {
+      "name": "soft-hyphen",
+      "input": "encyc­lopedia",
+      "collapsed": "encyc­lopedia",
+      "normalized": "encyclopedia",
+      "sha256": "93e42dd48381e964b79f8221fcc5f3197acf3227906154e9233ee6a972bd8d0d",
+      "words": 1
+    },
+    {
+      "name": "bom-midstring",
+      "input": "before﻿after",
+      "collapsed": "before﻿after",
+      "normalized": "beforeafter",
+      "sha256": "31c2400e49aa9f4e10264dc2a73542ad7ce327c1ee55b29af1164b2acbc01b42",
+      "words": 1
+    },
+    {
+      "name": "word-joiner",
+      "input": "a⁠b",
+      "collapsed": "a⁠b",
+      "normalized": "ab",
+      "sha256": "fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603",
+      "words": 1
+    },
+    {
+      "name": "en-quad-em-quad",
+      "input": "a b c",
+      "collapsed": "a b c",
+      "normalized": "a b c",
+      "sha256": "0e9f64031fcb2bc708b531c2a20441580425d151a38503f38592a7dd36019d3b",
+      "words": 3
+    },
+    {
+      "name": "thin-and-hair-space",
+      "input": "a b c",
+      "collapsed": "a b c",
+      "normalized": "a b c",
+      "sha256": "0e9f64031fcb2bc708b531c2a20441580425d151a38503f38592a7dd36019d3b",
+      "words": 3
+    },
+    {
+      "name": "figure-and-punctuation-space",
+      "input": "1 2 3",
+      "collapsed": "1 2 3",
+      "normalized": "1 2 3",
+      "sha256": "7c8f5059290305cec8323d79521f0353c9ac308b60cb4c1976340d0ce4a121d5",
+      "words": 3
+    },
+    {
+      "name": "narrow-nbsp",
+      "input": "12 000",
+      "collapsed": "12 000",
+      "normalized": "12 000",
+      "sha256": "88edb1ea79e60c57b34978d9f3071105701459ee66c065f78f5e6a6859af1585",
+      "words": 2
+    },
+    {
+      "name": "medium-math-space",
+      "input": "a b",
+      "collapsed": "a b",
+      "normalized": "a b",
+      "sha256": "c8687a08aa5d6ed2044328fa6a697ab8e96dc34291e8c2034ae8c38e6fcc6d65",
+      "words": 2
+    },
+    {
+      "name": "ideographic-space",
+      "input": "a　b",
+      "collapsed": "a b",
+      "normalized": "a b",
+      "sha256": "c8687a08aa5d6ed2044328fa6a697ab8e96dc34291e8c2034ae8c38e6fcc6d65",
+      "words": 2
+    },
+    {
+      "name": "line-and-paragraph-separator",
+      "input": "a b c",
+      "collapsed": "a b c",
+      "normalized": "a b c",
+      "sha256": "0e9f64031fcb2bc708b531c2a20441580425d151a38503f38592a7dd36019d3b",
+      "words": 3
+    },
+    {
+      "name": "ogham-space",
+      "input": "a b",
+      "collapsed": "a b",
+      "normalized": "a b",
+      "sha256": "c8687a08aa5d6ed2044328fa6a697ab8e96dc34291e8c2034ae8c38e6fcc6d65",
+      "words": 2
+    },
+    {
+      "name": "vertical-tab-formfeed",
+      "input": "a\u000bb\fc",
+      "collapsed": "a b c",
+      "normalized": "a b c",
+      "sha256": "0e9f64031fcb2bc708b531c2a20441580425d151a38503f38592a7dd36019d3b",
+      "words": 3
+    },
+    {
+      "name": "curly-single-quotes",
+      "input": "‘quoted’ and it’s",
+      "collapsed": "‘quoted’ and it’s",
+      "normalized": "'quoted' and it's",
+      "sha256": "96664005a2138d299fd8385a6cff6fdd8bf981087fdabfc981d27724671e2fe4",
+      "words": 3
+    },
+    {
+      "name": "curly-double-quotes",
+      "input": "“quoted” and „low‟",
+      "collapsed": "“quoted” and „low‟",
+      "normalized": "\"quoted\" and \"low\"",
+      "sha256": "3d06216b3eddd8e7d5cf98e14a8d361c2f83feb17509db692754928597765a16",
+      "words": 3
+    },
+    {
+      "name": "prime-marks",
+      "input": "5′ and 6″",
+      "collapsed": "5′ and 6″",
+      "normalized": "5' and 6\"",
+      "sha256": "26240129e91ff56011950f4229df9c7bd13c4a4bc4343a8ab2c0532461d7f299",
+      "words": 3
+    },
+    {
+      "name": "all-dashes",
+      "input": "a‐b‑c‒d–e—f―g−h",
+      "collapsed": "a‐b‑c‒d–e—f―g−h",
+      "normalized": "a-b-c-d-e-f-g-h",
+      "sha256": "d433804b60a4d2d8a081c49b443b9e722072c8f86b33e5856fabbcab8bbbd30c",
+      "words": 1
+    },
+    {
+      "name": "ellipsis",
+      "input": "wait… what",
+      "collapsed": "wait… what",
+      "normalized": "wait... what",
+      "sha256": "9c5b3046cff135c7098aed153f7ffaed7c35049883730116772e2fff9e238153",
+      "words": 2
+    },
+    {
+      "name": "nfc-decomposed",
+      "input": "café résumé",
+      "collapsed": "café résumé",
+      "normalized": "café résumé",
+      "sha256": "787ba50328c24630d3e9094a1accc03d9fada07f531f274d20c78d0c11e2846c",
+      "words": 2
+    },
+    {
+      "name": "nfc-already-composed",
+      "input": "café résumé",
+      "collapsed": "café résumé",
+      "normalized": "café résumé",
+      "sha256": "787ba50328c24630d3e9094a1accc03d9fada07f531f274d20c78d0c11e2846c",
+      "words": 2
+    },
+    {
+      "name": "emoji-zwj-survives",
+      "input": "family 👨‍👩‍👧 here",
+      "collapsed": "family 👨‍👩‍👧 here",
+      "normalized": "family 👨‍👩‍👧 here",
+      "sha256": "d6cd22b4b489cf9d7049be744c5a265797e3793b97fa28ca5b7348bba3fbd17b",
+      "words": 3
+    },
+    {
+      "name": "zwnj-survives",
+      "input": "क्‍ष",
+      "collapsed": "क्‍ष",
+      "normalized": "क्‍ष",
+      "sha256": "0b9e4e6e71371e261053a3c463fe82b0225b8472497ac2b5fbf53267c18281a3",
+      "words": 1
+    },
+    {
+      "name": "cjk-untouched",
+      "input": "中文测试",
+      "collapsed": "中文测试",
+      "normalized": "中文测试",
+      "sha256": "e350545d18735c5dd2dec50dcb971f3eb4cdda24b95a79bdb6b553f6a01ceb87",
+      "words": 1
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "collapsed": "",
+      "normalized": "",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "words": 0
+    },
+    {
+      "name": "whitespace-only",
+      "input": " \t\n ",
+      "collapsed": "",
+      "normalized": "",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "words": 0
+    },
+    {
+      "name": "scraped-paragraph",
+      "input": "  The report — released Tuesday — said​ costs rose 3.5%.  ",
+      "collapsed": "The report — released Tuesday — said​ costs rose 3.5%.",
+      "normalized": "The report - released Tuesday - said costs rose 3.5%.",
+      "sha256": "d292d317e54d875e5bc096715fdd9f13658b6ebc7e4cb118419fc2ff2245b75a",
+      "words": 10
+    }
+  ]
+}
