@@ -15,7 +15,39 @@ from slopmarker.corpus.dedup import (
     shingles,
 )
 
-WORDS = ["harbour", "lantern", "gravel", "meridian", "tundra", "copper", "salvage", "thicket", "bureau", "kettle", "quarry", "mantle", "drifting", "fathom", "pigment", "trellis", "cobalt", "marrow", "ledger", "tempest", "furrow", "beacon", "quiver", "saffron", "obsidian", "bramble", "cistern", "hollow", "verdant", "plinth"]
+# A word bank, so each seed yields genuinely distinct 13-grams.
+WORDS = [
+    "harbour",
+    "lantern",
+    "gravel",
+    "meridian",
+    "tundra",
+    "copper",
+    "salvage",
+    "thicket",
+    "bureau",
+    "kettle",
+    "quarry",
+    "mantle",
+    "drifting",
+    "fathom",
+    "pigment",
+    "trellis",
+    "cobalt",
+    "marrow",
+    "ledger",
+    "tempest",
+    "furrow",
+    "beacon",
+    "quiver",
+    "saffron",
+    "obsidian",
+    "bramble",
+    "cistern",
+    "hollow",
+    "verdant",
+    "plinth",
+]
 
 
 def article(seed: int = 0, n: int = 30) -> str:
