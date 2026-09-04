@@ -32,6 +32,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { argv, exit } from "node:process";
 
+import { buildPages } from "./pages.mjs";
+
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const repo = resolve(root, "..");
@@ -41,6 +43,12 @@ const headed = flag("headed");
 const verbose = flag("verbose");
 /** Fetch the bundle from the real release host instead of a local stand-in. */
 const realHost = flag("real-host");
+/**
+ * Install the packaged archive rather than the unpacked directory. The two are meant to be
+ * the same extension, and this is the only thing that checks that they are -- `web-ext
+ * build` re-reads the tree and could omit a file the directory has.
+ */
+const useXpi = flag("xpi");
 
 const dist = join(root, "dist", "firefox");
 const calibration = JSON.parse(readFileSync(join(dist, "assets", "calibration.json"), "utf-8"));
@@ -58,6 +66,14 @@ if (!existsSync(join(bundleDir, "model.onnx"))) {
   console.error(`no local bundle at ${bundleDir}`);
   exit(2);
 }
+
+const manifestVersion = JSON.parse(readFileSync(join(dist, "manifest.json"), "utf-8")).version;
+const xpi = join(repo, "artifacts", "packages", `slop-marker-${manifestVersion}.xpi`);
+if (useXpi && !existsSync(xpi)) {
+  console.error(`no packaged archive at ${xpi} — run: node scripts/package.mjs --browser=firefox`);
+  exit(2);
+}
+const addon = useXpi ? xpi : dist;
 
 function serveBundle(port) {
   return new Promise((ready) => {
@@ -79,52 +95,19 @@ function serveBundle(port) {
   });
 }
 
-function servePage(port, html) {
+function servePage(port, routes) {
   return new Promise((ready) => {
-    const server = createServer((_req, res) => {
+    const server = createServer((req, res) => {
+      const path = new URL(req.url, "http://x").pathname;
+      const html = routes[path];
+      if (html === undefined) {
+        res.writeHead(404).end("no such page");
+        return;
+      }
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(html);
     });
     server.listen(port, "127.0.0.1", () => ready(server));
   });
-}
-
-/** The same page the Chrome run uses, built from fixtures/documents.json. */
-function buildPage() {
-  const fx = JSON.parse(readFileSync(join(repo, "fixtures", "documents.json"), "utf-8"));
-  const flagged = fx.documents.find((d) => d.expected.runs.some((r) => r.flagged));
-  const clean = fx.documents.find((d) => !d.expected.runs.some((r) => r.flagged));
-
-  const paras = (text) => {
-    const out = [];
-    let current = [];
-    let words = 0;
-    for (const sentence of text.split(/(?<=\.)\s+/)) {
-      current.push(sentence);
-      words += sentence.split(/\s+/).length;
-      if (words >= 110) {
-        out.push(current.join(" "));
-        current = [];
-        words = 0;
-      }
-    }
-    if (words >= 45) out.push(current.join(" "));
-    return out.map((p) => `<p>${p.trim()}</p>`).join("\n");
-  };
-
-  return {
-    html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>e2e</title></head>
-<body>
-  <nav><p>Navigation text that must never be scored, however long it is made.</p></nav>
-  <main>
-    <article id="flagged">${paras(flagged.text)}</article>
-    <hr>
-    <article id="clean">${paras(clean.text)}</article>
-  </main>
-  <footer><p>Footer text that must never be scored, however long it is made.</p></footer>
-</body></html>`,
-    flaggedName: flagged.name,
-    cleanName: clean.name,
-  };
 }
 
 const results = [];
@@ -154,12 +137,12 @@ async function main() {
   const firefox = (await import("selenium-webdriver/firefox.js")).default;
   const geckodriver = await import("geckodriver");
 
-  const { html, flaggedName, cleanName } = buildPage();
+  const { routes, flaggedName, cleanName, flaggedParagraphs } = buildPages();
   const bundleServer = realHost ? null : await serveBundle(8787);
-  const pageServer = await servePage(8788, html);
+  const pageServer = await servePage(8788, routes);
   const profile = await mkdtemp(join(tmpdir(), "slop-marker-ff-"));
 
-  console.log(`extension  ${dist}`);
+  console.log(`extension  ${addon}${useXpi ? " (packaged)" : ""}`);
   console.log(`model      ${VERSION} from ${realHost ? "the real release host" : "http://127.0.0.1:8787"}`);
   console.log(`page       flagged=${flaggedName} clean=${cleanName}\n`);
 
@@ -180,7 +163,7 @@ async function main() {
     .build();
 
   try {
-    await driver.installAddon(dist, true);
+    await driver.installAddon(addon, true);
 
     /**
      * Firefox assigns each extension a per-profile moz-extension:// origin and ignores a
@@ -287,6 +270,135 @@ async function main() {
     if (observed.highlightedText) {
       console.log(`\n  highlighted: "${observed.highlightedText}…"`);
     }
+
+    /* ------------------------------------------------ scope.md 7.1, in full */
+
+    console.log("\n  structured page (every candidate, every exclusion):");
+    await driver.switchTo().newWindow("tab");
+    await driver.get("http://127.0.0.1:8788/structured");
+    await driver
+      .wait(
+        async () =>
+          await driver.executeScript(
+            "return document.querySelectorAll('[data-slop-marker]').length > 0;",
+          ),
+        300_000,
+      )
+      .catch(() => undefined);
+
+    const marks = await driver.executeScript(function () {
+      const marked = (sel) => {
+        const el = document.querySelector(sel);
+        if (el === null) return -1;
+        return (
+          (el.hasAttribute("data-slop-marker") ? 1 : 0) +
+          el.querySelectorAll("[data-slop-marker]").length
+        );
+      };
+      const ids = [
+        "#in-li", "#in-blockquote", "#in-dd", "#in-td", "#nested",
+        "#x-pre", "#x-figure", "#disqus_thread", "#x-comments",
+        "#x-editable", "#x-aside", "#x-form", "#x-role",
+      ];
+      const out = {};
+      for (const id of ids) out[id] = marked(id);
+      return out;
+    });
+
+    for (const [id, label] of [
+      ["#in-li", "li"],
+      ["#in-blockquote", "blockquote"],
+      ["#in-dd", "dd"],
+      ["#in-td", "td"],
+    ]) {
+      check(
+        `scores a ${label}, which scope.md 7.1 lists as a candidate`,
+        marks[id] >= 1,
+        `${marks[id]} marked`,
+      );
+    }
+    check(
+      "scores nested candidates once, not twice",
+      marks["#nested"] === 1,
+      `${marks["#nested"]} marked`,
+    );
+    for (const [id, label] of [
+      ["#x-pre", "pre/code"],
+      ["#x-figure", "figure/figcaption"],
+      ["#disqus_thread", "a Disqus thread"],
+      ["#x-comments", "a comment list"],
+      ["#x-editable", "editable text"],
+      ["#x-aside", "an aside"],
+      ["#x-form", "a form"],
+      ["#x-role", "[role=complementary]"],
+    ]) {
+      check(
+        `never scores ${label}, even carrying the same text`,
+        marks[id] === 0,
+        `${marks[id]} marked`,
+      );
+    }
+
+    /* --------------------------------------------------- scope.md 7.1, SPA rescan */
+
+    console.log("\n  SPA behaviour:");
+    await driver.switchTo().newWindow("tab");
+    await driver.get("http://127.0.0.1:8788/spa");
+    await new Promise((r) => setTimeout(r, 3000));
+
+    const emptyShell = await driver.executeScript(
+      "return document.querySelectorAll('[data-slop-marker]').length;",
+    );
+    check("an empty shell has nothing to highlight", emptyShell === 0, `${emptyShell} marked`);
+
+    await driver.executeScript(
+      "document.querySelector('#root').insertAdjacentHTML('beforeend', arguments[0]);",
+      `<article id="added">${flaggedParagraphs}</article>`,
+    );
+    await driver
+      .wait(
+        async () =>
+          await driver.executeScript(
+            "return document.querySelectorAll('#added [data-slop-marker]').length > 0;",
+          ),
+        300_000,
+      )
+      .catch(() => undefined);
+    const afterMutation = await driver.executeScript(
+      "return document.querySelectorAll('#added [data-slop-marker]').length;",
+    );
+    check("re-scores a subtree an SPA adds after load", afterMutation > 0, `${afterMutation} marked`);
+
+    /* ------------------------------------------- scope.md 9, allowlist, via the UI */
+
+    console.log("\n  allowlist, driven through the options page:");
+    await driver.switchTo().window(extensionTab);
+    const allowlistBox = await driver.findElement(By.id("allowlist"));
+    await allowlistBox.clear();
+    await allowlistBox.sendKeys("http://127.0.0.1:8788");
+    await driver.findElement(By.id("save-allowlist")).click();
+    const saved = await waitForText(driver, By, "allowlist-status", (t) => t.length > 0, 15_000);
+    check("the options page saves an excluded origin", saved.startsWith("Saved"), saved || "(blank)");
+
+    await driver.switchTo().newWindow("tab");
+    await driver.get("http://127.0.0.1:8788/");
+    await new Promise((r) => setTimeout(r, 8000));
+    const onBlocked = await driver.executeScript(function () {
+      return {
+        marked: document.querySelectorAll("[data-slop-marker]").length,
+        ranges: (CSS.highlights && CSS.highlights.get("slop-marker")?.size) || 0,
+      };
+    });
+    check(
+      "an allowlisted origin is not extracted at all",
+      onBlocked.marked === 0 && onBlocked.ranges === 0,
+      `${onBlocked.marked} blocks, ${onBlocked.ranges} ranges`,
+    );
+
+    // Put it back, so a --keep profile is not left excluding the test origin.
+    await driver.switchTo().window(extensionTab);
+    await (await driver.findElement(By.id("allowlist"))).clear();
+    await driver.findElement(By.id("save-allowlist")).click();
   } catch (err) {
     console.log(`\n  ERROR: ${err?.message ?? String(err)}`);
     results.push({ name: "run completed", ok: false, detail: String(err?.message ?? err) });

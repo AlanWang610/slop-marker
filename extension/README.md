@@ -110,6 +110,35 @@ reports as `background_page`), and connect to its `webSocketDebuggerUrl`.
 substitutes `host.html` as a tab. `npm run e2e -- --headed` uses the real offscreen
 document, and is the only thing that would have caught the `chrome.storage` bug.
 
+**A port to a terminated service worker stays writable and swallows what you post.**
+Measured: stop the worker over CDP, and the content script's `onDisconnect` never fires, so
+every later score request vanishes and the page is never scored again. `onDisconnect` alone
+is therefore not a sufficient signal — `content/index.ts` also watches for silence, and
+rebuilds the port when nothing has come back for 20 s with chunks still outstanding.
+
+**`closest()` matches the element itself.** Two separate bugs came from this. `td` is a §7.1
+candidate, but `table` had been added to the exclusion list, so every cell matched its own
+ancestor and no table cell was ever scored. And the nested-candidate guard read
+`element.closest(CANDIDATES) !== element`, which can never be true — so `<li><p>…</p></li>`
+produced two blocks over the same text, double-counting it in the §8 document prior.
+
+**Block boundaries are word boundaries, and minified HTML has no whitespace node at them.**
+`<li><p>Alpha.</p><p>Beta.</p></li>` walks to `Alpha.Beta.` unless extraction inserts the
+space itself: one word short, and a token the model never saw. Hand-written test pages are
+pretty-printed and hide this; most of the real web is not.
+
+**The content root must be pinned, not re-derived.** `contentRoot()` prefers the first
+`<article>`, so recomputing it every pass means an SPA that appends articles as the reader
+scrolls narrows the root to the first one it added — and everything after that falls outside
+it and is silently never scored. Measured on a three-batch feed: batch one highlighted,
+batches two and three invisible. `extract.ts::pinRoot` holds the root and re-derives it only
+once the element has left the document.
+
+**A client-rendered page has nothing to score at `document_idle`.** That is precisely the
+case §7.1's `MutationObserver` exists for, so extraction must install its observers even
+when the first pass finds no blocks at all — otherwise the pages that most need rescanning
+are the ones that never get it.
+
 ## Firefox packaging
 
 `web-ext lint --source-dir dist/firefox` reports **0 errors**. Three of the four warnings
@@ -127,12 +156,37 @@ beyond the local caches (§1, §11).
 
 | | |
 |---|---|
-| unit + cross-language parity | 240 tests |
-| Chrome, headless (host as a tab) | 12/12 |
-| Chrome, headed (real offscreen document) | 11/11 |
-| Firefox (geckodriver, real UI) | 10/10 |
-| against the published release host | Chrome 12/12, Firefox 10/10 |
+| unit, DOM and cross-language parity | 596 tests across 20 files |
+| Chrome, headless (host as a tab) | 44/44 |
+| Chrome, headed (real offscreen document) | 43/43 |
+| Firefox (geckodriver, real UI) | 27/27 |
+| Firefox, installed from the built `.xpi` | 27/27 |
+| against the published release host | Chrome 42/42, Firefox 27/27 |
+| packaging (`.crx` + `.xpi`, read back) | 8/8 |
 | `web-ext lint` | 0 errors |
+| Python side, unchanged | 395 tests |
+
+The counts differ by browser because some checks only apply to one. Headless opens
+`host.html` as a tab and can assert its cross-origin isolation directly; headed uses the
+real offscreen document instead. `--real-host` skips the corrupted-download pair, which
+needs a server of ours to corrupt.
+
+Measured contrast of the de-emphasis (scope.md 9), against a 3.0:1 floor — WCAG AA for
+large text, and the point of "de-emphasize, never hide":
+
+| ground | flagged text | ordinary text |
+|---|---|---|
+| light page | 4.88:1 | 21:1 |
+| dark page (`#111`) | 3.49:1 | 16.28:1 |
+| tinted callout | 3.49:1 | 13.5:1 |
+
+The dark case is the tight one. `::highlight()` styles cannot be read back with
+`getComputedStyle`, so the harness resolves the same `color-mix()` onto a 1×1 canvas and
+reads the pixel — Chrome serialises the computed value as `oklab(...)`, which no rgb parse
+would have caught.
+
+Two of the vitest files -- `model-parity` and `document-parity` -- skip themselves unless
+`artifacts/bundles/<version>/model.onnx` is present, since the bundle never enters git.
 
 `--real-host` is not a formality: GitHub release assets carry no
 `Access-Control-Allow-Origin`, which is the entire reason the download runs in the service
@@ -140,4 +194,52 @@ worker rather than the cross-origin-isolated offscreen document. A local test se
 `access-control-allow-origin: *` would let that regression through unnoticed.
 
 ## Known gaps
+
+Everything below is *not* covered by any automated test. It is listed rather than implied,
+because the failures that cost the most here were all invisible ones -- a page that is never
+scored looks exactly like a page with nothing to flag.
+
+**No test uses a real website.** Every page in `e2e/` is generated from
+`fixtures/documents.json`. That makes the expected outcome exact -- Python already scored
+this text -- and it means the harness has never met a CMS template, a cookie banner, a
+paywall, or lazy images that reflow the page under a highlight. The synthetic pages model
+the *shapes* that matter (every candidate and exclusion in scope.md 7.1, a growing feed, a
+dark ground); they do not model the mess.
+
+**Nothing is AMO-signed.** `npm run package` builds both artifacts and reads them back
+— CRX3 header, signature, central directory, and `npm run e2e:firefox:xpi` installs the
+built `.xpi` and runs the whole Firefox suite against it. What it cannot do is
+`web-ext sign --channel=unlisted`, which needs the account's AMO API credentials. The
+archive produced here is exactly what that command would upload.
+
+The Chrome signing key is generated on the first `npm run package` and kept at
+`artifacts/packages/chrome-key.pem`, which is gitignored. It *is* the extension's identity:
+lose it and every existing install sees a different extension id.
+
+**Firefox's site-access grant is bypassed.** The harness sets
+`extensions.originControls.grantByDefault` rather than clicking the permission prompt, which
+is the one step of the scope.md 6.5 first-run flow no test performs.
+
+**Service-worker idle termination cannot be tested under automation.** Chrome does not retire
+an MV3 service worker while a debugger is attached, and Playwright is always attached. The
+port-reconnect check therefore stops the worker explicitly over CDP instead of waiting out
+the 30 s idle timer.
+
+### Manual pass
+
+Worth walking before calling a build good, since none of it is automated:
+
+- [ ] A known-AI article highlights, and the tooltip reports a sensible score and word count.
+- [ ] A hard negative does not: a press release, a product listing, and a forum thread
+      written by a non-native English speaker (the case scope.md 2 names as the main FPR
+      risk, and the one the language gate may quietly decline to score at all).
+- [ ] A page in a language other than English is left alone.
+- [ ] Scrolling a long page fast does not leave stale highlights behind, and the text under
+      the cursor is scored before the text far below it.
+- [ ] Leave a tab idle for a minute, then scroll: scoring resumes rather than stalling.
+
+Contrast, dark and tinted grounds, the infinite-scroll case and the per-site allowlist used
+to be on this list and are now asserted by the browser harnesses. What no assertion can
+settle is whether the result *looks* right on a page nobody wrote for the test.
+
 

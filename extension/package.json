@@ -15,7 +15,9 @@
     "bench": "node scripts/bench-ort.mjs",
     "e2e": "node scripts/build.mjs --browser=chrome --model-base-url=http://127.0.0.1:8787 && node e2e/run.mjs",
     "e2e:firefox": "node scripts/build.mjs --browser=firefox --model-base-url=http://127.0.0.1:8787 && node e2e/firefox.mjs",
-    "e2e:all": "npm run e2e && npm run e2e:firefox"
+    "e2e:all": "npm run e2e && npm run e2e:firefox",
+    "package": "node scripts/package.mjs",
+    "e2e:firefox:xpi": "node scripts/package.mjs --browser=firefox && node e2e/firefox.mjs --xpi"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",

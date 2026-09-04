@@ -15,11 +15,14 @@
 
 import { createServer } from "node:http";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { Transform } from "node:stream";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { argv, exit } from "node:process";
+
+import { buildPages } from "./pages.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
@@ -66,6 +69,12 @@ if (!existsSync(join(bundleDir, "model.onnx"))) {
 
 /* ---------------------------------------------------------------- local hosts */
 
+/**
+ * Flipped by the corrupt-download scenario. One byte is enough: the checksum is computed
+ * over the whole file, so this reproduces a truncated or tampered upload exactly.
+ */
+const bundleState = { corrupt: false };
+
 /** Serves the model bundle, standing in for the release host. */
 function serveBundle(port) {
   return new Promise((ready) => {
@@ -83,71 +92,155 @@ function serveBundle(port) {
         // precisely because of that. Sending them here would hide a COEP regression.
         "access-control-allow-origin": "*",
       });
-      createReadStream(file).pipe(res);
+      if (!bundleState.corrupt) {
+        createReadStream(file).pipe(res);
+        return;
+      }
+      let flipped = false;
+      const flip = new Transform({
+        transform(chunk, _encoding, done) {
+          if (!flipped && chunk.length > 0) {
+            chunk[0] ^= 0xff;
+            flipped = true;
+          }
+          done(null, chunk);
+        },
+      });
+      createReadStream(file).pipe(flip).pipe(res);
     });
     server.listen(port, "127.0.0.1", () => ready(server));
   });
 }
 
-/** Serves the fixture page. A real http origin, so the content script matches <all_urls>. */
-function servePage(port, html) {
+/** Serves the fixture pages. A real http origin, so the content script matches <all_urls>. */
+function servePage(port, routes) {
   return new Promise((ready) => {
-    const server = createServer((_req, res) => {
+    const server = createServer((req, res) => {
+      const path = new URL(req.url, "http://x").pathname;
+      const html = routes[path];
+      if (html === undefined) {
+        res.writeHead(404).end("no such page");
+        return;
+      }
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(html);
     });
     server.listen(port, "127.0.0.1", () => ready(server));
   });
 }
 
-/**
- * The page. Its two halves come from fixtures/documents.json, so the expected outcome is
- * not a guess: Python already scored this exact text through the same pipeline.
- */
-function buildPage() {
-  const fx = JSON.parse(readFileSync(join(repo, "fixtures", "documents.json"), "utf-8"));
-  const flagged = fx.documents.find((d) => d.expected.runs.some((r) => r.flagged));
-  const clean = fx.documents.find((d) => !d.expected.runs.some((r) => r.flagged));
-  if (!flagged || !clean) throw new Error("documents.json needs one flagged and one clean case");
+/* ---------------------------------------------------------------- the run */
 
-  /**
-   * Paragraphs of at least ~110 words. Blocks under `min_words` (40) are correctly skipped
-   * by the content script, so a page of short paragraphs is scored not at all -- which on
-   * screen looks identical to a page the model declined to flag.
-   */
-  const paras = (text) => {
-    const out = [];
-    let current = [];
-    let words = 0;
-    for (const sentence of text.split(/(?<=\.)\s+/)) {
-      current.push(sentence);
-      words += sentence.split(/\s+/).length;
-      if (words >= 110) {
-        out.push(current.join(" "));
-        current = [];
-        words = 0;
-      }
-    }
-    if (words >= 45) out.push(current.join(" "));
-    return out.map((p) => `<p>${p.trim()}</p>`).join("\n");
-  };
-
-  return {
-    html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>e2e</title></head>
-<body>
-  <nav><p>Navigation text that must never be scored, however long it is made.</p></nav>
-  <main>
-    <article id="flagged">${paras(flagged.text)}</article>
-    <hr>
-    <article id="clean">${paras(clean.text)}</article>
-  </main>
-  <footer><p>Footer text that must never be scored, however long it is made.</p></footer>
-</body></html>`,
-    flaggedName: flagged.name,
-    cleanName: clean.name,
-  };
+/** Resolve `promise`, or `fallback` if it has not settled in time. */
+function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise((r) => setTimeout(() => r(fallback), ms)),
+  ]);
 }
 
-/* ---------------------------------------------------------------- the run */
+/** Wait for the first highlight, or give up quietly and let the assertion report it. */
+async function waitForHighlights(page, timeout = 180_000) {
+  await page
+    .waitForFunction(() => CSS.highlights?.get("slop-marker")?.size > 0, null, { timeout })
+    .catch(() => undefined);
+}
+
+/**
+ * Measure what a reader actually sees on a flagged block, in the page.
+ *
+ * scope.md 9 asks for de-emphasis, "never hide", and the two halves of that pull against
+ * each other: too little mixing and the cue is invisible, too much and the text is
+ * unreadable. Nothing asserted either half until now -- the harness only ever checked that
+ * `--slop-marker-bg` resolved to the right colour, which says nothing about the result.
+ *
+ * `::highlight()` styles cannot be read back with getComputedStyle, so this resolves the
+ * same `color-mix()` the stylesheet uses on a probe span inside the block, then computes
+ * WCAG relative-luminance contrast against the effective background. Both the mixed colour
+ * and the block's own colour are reported, so a caller can assert the text is still legible
+ * *and* genuinely quieter than its neighbours.
+ */
+const CONTRAST_PROBE = `(sel) => {
+  const block = document.querySelector(sel);
+  if (block === null) return null;
+
+  /**
+   * Paint a colour on a 1x1 canvas and read the pixel back.
+   *
+   * Not getComputedStyle: Chrome serialises a computed \`color-mix(in oklab, ...)\` as
+   * \`oklab(L a b)\`, so scraping rgb() out of it silently yields nothing. The canvas gives
+   * exact sRGB bytes whatever the serialisation. A rejected colour leaves fillStyle at the
+   * sentinel, which is how an unsupported syntax is detected rather than mistaken for
+   * magenta.
+   */
+  const paint = (css) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const ctx = canvas.getContext("2d");
+    const sentinel = "#ff00ff";
+    ctx.fillStyle = sentinel;
+    ctx.fillStyle = css;
+    if (ctx.fillStyle === sentinel && css.replace(/\\s/g, "").toLowerCase() !== sentinel) {
+      return null;
+    }
+    ctx.fillRect(0, 0, 1, 1);
+    const data = ctx.getImageData(0, 0, 1, 1).data;
+    return [data[0], data[1], data[2]];
+  };
+
+  /** Resolve a colour keyword the canvas will not take (Canvas, currentColor) via layout. */
+  const resolveBackground = (css) => {
+    const probe = document.createElement("span");
+    probe.style.backgroundColor = css;
+    block.appendChild(probe);
+    const value = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return value;
+  };
+
+  // WCAG 2.x relative luminance, on sRGB channels.
+  const luminance = (channels) => {
+    const linear = channels.map((c) => {
+      const v = c / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  };
+
+  const ratio = (a, b) => {
+    if (a === null || b === null) return null;
+    const la = luminance(a);
+    const lb = luminance(b);
+    const [hi, lo] = la > lb ? [la, lb] : [lb, la];
+    return Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
+  };
+
+  const declared = block.style.getPropertyValue("--slop-marker-bg") || "Canvas";
+  const backgroundCss = resolveBackground(declared);
+  const baseCss = getComputedStyle(block).color;
+
+  const background = paint(backgroundCss);
+  const base = paint(baseCss);
+  // The same mix the stylesheet applies, with currentColor and the ground already resolved
+  // so the canvas can take it.
+  const mixed = paint(\`color-mix(in oklab, \${baseCss} 45%, \${backgroundCss})\`);
+
+  return {
+    background,
+    base,
+    mixed,
+    mixedContrast: ratio(mixed, background),
+    baseContrast: ratio(base, background),
+  };
+}`;
+
+/** Self-or-descendant count of decorated blocks under a selector, evaluated in the page. */
+const MARKED_COUNTER = `(sel) => {
+  const el = document.querySelector(sel);
+  if (el === null) return -1;
+  return (el.hasAttribute("data-slop-marker") ? 1 : 0) +
+    el.querySelectorAll("[data-slop-marker]").length;
+}`;
 
 const results = [];
 const check = (name, ok, detail = "") => {
@@ -157,10 +250,10 @@ const check = (name, ok, detail = "") => {
 
 async function main() {
   const { chromium } = await import("playwright");
-  const { html, flaggedName, cleanName } = buildPage();
+  const { routes, flaggedName, cleanName, flaggedParagraphs } = buildPages();
 
   const bundleServer = realHost ? null : await serveBundle(8787);
-  const pageServer = await servePage(8788, html);
+  const pageServer = await servePage(8788, routes);
   const profile = await mkdtemp(join(tmpdir(), "slop-marker-e2e-"));
 
   console.log(`extension  ${dist}`);
@@ -220,6 +313,34 @@ async function main() {
       if (m.type() === "error") console.log(`  [first-run] ${m.text()}`);
     });
     await setup.goto(`chrome-extension://${extensionId}/first-run.html`);
+
+    /**
+     * Fail closed first. One byte of model.onnx is flipped on the wire, which is what a
+     * truncated or tampered upload looks like from here. Nothing may reach the Cache API,
+     * because a half-trusted model would then be loaded on every later run with nothing to
+     * point at. Skipped against --real-host, where there is no server of ours to corrupt.
+     */
+    if (!realHost) {
+      bundleState.corrupt = true;
+      const bad = await setup.evaluate(
+        async () => await chrome.runtime.sendMessage({ type: "downloadModel" }),
+      );
+      check(
+        "a corrupted bundle is refused",
+        bad?.ok === false && /checksum mismatch/.test(bad?.message ?? ""),
+        bad?.message ?? "accepted it",
+      );
+
+      const afterBad = await setup.evaluate(
+        async () => await chrome.runtime.sendMessage({ type: "getStatus" }),
+      );
+      check(
+        "nothing is cached after a refused download",
+        afterBad?.modelState?.phase === "error",
+        afterBad?.modelState?.phase ?? "?",
+      );
+      bundleState.corrupt = false;
+    }
 
     // Download the model. This exercises the real path: fetch in the service worker,
     // verify against the shipped SHA256SUMS, write to the Cache API.
@@ -392,6 +513,378 @@ async function main() {
 
     if (observed.highlightedText) {
       console.log(`\n  highlighted: "${observed.highlightedText}…"`);
+    }
+
+    /* ------------------------------------------------ scope.md 7.1, in full */
+
+    console.log("\n  structured page (every candidate, every exclusion):");
+    const structured = await context.newPage();
+    structured.on("pageerror", (e) => console.log(`  [structured] uncaught: ${e.message}`));
+    await structured.goto("http://127.0.0.1:8788/structured", { waitUntil: "domcontentloaded" });
+    await waitForHighlights(structured);
+
+    const marks = await structured.evaluate((counter) => {
+      const marked = new Function(`return ${counter}`)();
+      const ids = [
+        "#in-li", "#in-blockquote", "#in-dd", "#in-td", "#nested",
+        "#x-pre", "#x-figure", "#disqus_thread", "#x-comments",
+        "#x-editable", "#x-aside", "#x-form", "#x-role",
+      ];
+      return Object.fromEntries(ids.map((id) => [id, marked(id)]));
+    }, MARKED_COUNTER);
+
+    for (const [id, label] of [
+      ["#in-li", "li"],
+      ["#in-blockquote", "blockquote"],
+      ["#in-dd", "dd"],
+      ["#in-td", "td"],
+    ]) {
+      // td is the regression: `table` was in the exclusion list, and since exclusion is a
+      // closest() test every cell matched its own ancestor. No td had ever been scored.
+      check(
+        `scores a ${label}, which scope.md 7.1 lists as a candidate`,
+        marks[id] >= 1,
+        `${marks[id]} marked`,
+      );
+    }
+
+    // Before the fix the nested-candidate guard was dead code -- closest() matches the
+    // element itself -- so the li and its p were both blocks over the same text.
+    check(
+      "scores nested candidates once, not twice",
+      marks["#nested"] === 1,
+      `${marks["#nested"]} marked`,
+    );
+
+    for (const [id, label] of [
+      ["#x-pre", "pre/code"],
+      ["#x-figure", "figure/figcaption"],
+      ["#disqus_thread", "a Disqus thread"],
+      ["#x-comments", "a comment list"],
+      ["#x-editable", "editable text"],
+      ["#x-aside", "an aside"],
+      ["#x-form", "a form"],
+      ["#x-role", "[role=complementary]"],
+    ]) {
+      check(
+        `never scores ${label}, even carrying the same text`,
+        marks[id] === 0,
+        `${marks[id]} marked`,
+      );
+    }
+
+    /* ------------------------------------------------------ scope.md 9, themes */
+
+    console.log("\n  dark and tinted grounds:");
+    const page_ = page; // the article page, aliased so the loop below can shadow `page`
+    const dark = await context.newPage();
+    await dark.goto("http://127.0.0.1:8788/dark", { waitUntil: "domcontentloaded" });
+    await waitForHighlights(dark);
+
+    const grounds = await dark.evaluate(() => {
+      const read = (sel) => {
+        const el = document.querySelector(sel);
+        return el === null ? null : el.style.getPropertyValue("--slop-marker-bg");
+      };
+      return {
+        body: read("#dark-body [data-slop-marker]"),
+        callout: read("#callout [data-slop-marker]"),
+      };
+    });
+    check(
+      "mixes against the dark page background, not white",
+      grounds.body === "rgb(17, 17, 17)",
+      grounds.body ?? "nothing marked",
+    );
+    check(
+      "mixes a tinted callout against its own background",
+      grounds.callout === "rgb(40, 30, 60)",
+      grounds.callout ?? "nothing marked",
+    );
+
+    /**
+     * The half of scope.md 9 no assertion covered: "de-emphasize, never hide". 3.0 is
+     * WCAG AA for large text -- a defensible floor for prose that is meant to recede but
+     * still be readable. The upper bound is the block's own text: if the mix were not
+     * quieter than its neighbours there would be no cue at all.
+     */
+    const LEGIBLE = 3.0;
+    for (const [page, sel, label] of [
+      [page_, "#flagged [data-slop-marker]", "a light page"],
+      [dark, "#dark-body [data-slop-marker]", "a dark page"],
+      [dark, "#callout [data-slop-marker]", "a tinted callout"],
+    ]) {
+      const seen = await page.evaluate(
+        ([probe, s]) => new Function(`return ${probe}`)()(s),
+        [CONTRAST_PROBE, sel],
+      );
+      if (seen === null) {
+        check(`de-emphasized text stays readable on ${label}`, false, "nothing marked");
+        continue;
+      }
+      const measured = seen.mixedContrast !== null && seen.baseContrast !== null;
+      check(
+        `de-emphasized text stays readable on ${label}`,
+        measured && seen.mixedContrast >= LEGIBLE,
+        measured ? `contrast ${seen.mixedContrast}:1 (floor ${LEGIBLE})` : "could not measure",
+      );
+      check(
+        `de-emphasized text is quieter than its neighbours on ${label}`,
+        measured && seen.mixedContrast < seen.baseContrast,
+        measured
+          ? `${seen.mixedContrast}:1 against ${seen.baseContrast}:1 for ordinary text`
+          : "could not measure",
+      );
+    }
+
+    /* --------------------------------------------------- scope.md 7.1, SPA rescan */
+
+    console.log("\n  SPA behaviour:");
+    const spa = await context.newPage();
+    spa.on("pageerror", (e) => console.log(`  [spa] uncaught: ${e.message}`));
+    await spa.goto("http://127.0.0.1:8788/spa", { waitUntil: "domcontentloaded" });
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const before = await spa.evaluate(
+      () => document.querySelectorAll("[data-slop-marker]").length,
+    );
+    check("an empty shell has nothing to highlight", before === 0, `${before} marked`);
+
+    // The page had no scoreable prose at document_idle, which is exactly the case the
+    // MutationObserver exists for -- and the case where the content script used to return
+    // before installing it.
+    await spa.evaluate((html) => {
+      document
+        .querySelector("#root")
+        .insertAdjacentHTML("beforeend", `<article id="added">${html}</article>`);
+    }, flaggedParagraphs);
+    await waitForHighlights(spa);
+
+    const afterMutation = await spa.evaluate(
+      () => document.querySelectorAll("#added [data-slop-marker]").length,
+    );
+    check("re-scores a subtree an SPA adds after load", afterMutation > 0, `${afterMutation} marked`);
+
+    /**
+     * An infinite feed. Each batch must be scored, and -- the part a single append cannot
+     * show -- the batches before it must still be highlighted afterwards. Rendering
+     * replaces the whole highlight set on every paint, so a run that stopped being
+     * recomputed would silently disappear from the top of the page as the reader scrolled.
+     */
+    const feed = await context.newPage();
+    feed.on("pageerror", (e) => console.log(`  [feed] uncaught: ${e.message}`));
+    await feed.goto("http://127.0.0.1:8788/spa", { waitUntil: "domcontentloaded" });
+    await new Promise((r) => setTimeout(r, 2000));
+
+    let feedOk = true;
+    let feedDetail = "";
+    for (let batch = 1; batch <= 3; batch++) {
+      await feed.evaluate(
+        ([html, id]) => {
+          document
+            .querySelector("#root")
+            .insertAdjacentHTML("beforeend", `<article id="${id}">${html}</article>`);
+        },
+        [flaggedParagraphs, `batch-${batch}`],
+      );
+      await feed
+        .waitForFunction(
+          (id) => document.querySelectorAll(`#${id} [data-slop-marker]`).length > 0,
+          `batch-${batch}`,
+          { timeout: 120_000 },
+        )
+        .catch(() => undefined);
+
+      const still = await feed.evaluate(
+        (n) => {
+          const out = [];
+          for (let i = 1; i <= n; i++) {
+            out.push(document.querySelectorAll(`#batch-${i} [data-slop-marker]`).length);
+          }
+          return out;
+        },
+        batch,
+      );
+      feedDetail = still.join("/");
+      if (still.some((count) => count === 0)) {
+        feedOk = false;
+        break;
+      }
+    }
+    check(
+      "an infinite feed keeps scoring as it grows, without dropping earlier runs",
+      feedOk,
+      `blocks marked per batch: ${feedDetail}`,
+    );
+    await feed.close();
+
+    /* -------------------------------------------------- scope.md 11, score cache */
+
+    const cached = await setup.evaluate(
+      async () => await chrome.runtime.sendMessage({ type: "getStatus" }),
+    );
+    check(
+      "scored chunks are cached for the next visit",
+      (cached?.cachedScores ?? 0) > 0,
+      `${cached?.cachedScores ?? 0} entries`,
+    );
+
+    /* ------------------------------------- scope.md 9, threshold override, live */
+
+    console.log("\n  options-page controls:");
+    const flaggedBefore = await page.evaluate(
+      () => document.querySelectorAll("[data-slop-marker]").length,
+    );
+    await setup.evaluate(async () => {
+      await chrome.storage.local.set({ thresholdOverride: 0.999 });
+    });
+    await page
+      .waitForFunction(
+        (n) => document.querySelectorAll("[data-slop-marker]").length < n,
+        flaggedBefore,
+        { timeout: 15_000 },
+      )
+      .catch(() => undefined);
+    const flaggedStrict = await page.evaluate(
+      () => document.querySelectorAll("[data-slop-marker]").length,
+    );
+    check(
+      "a stricter threshold repaints open tabs without a reload",
+      flaggedStrict < flaggedBefore,
+      `${flaggedBefore} -> ${flaggedStrict} blocks`,
+    );
+
+    await setup.evaluate(async () => {
+      await chrome.storage.local.remove("thresholdOverride");
+    });
+    await page
+      .waitForFunction(
+        (n) => document.querySelectorAll("[data-slop-marker]").length === n,
+        flaggedBefore,
+        { timeout: 15_000 },
+      )
+      .catch(() => undefined);
+    const flaggedRestored = await page.evaluate(
+      () => document.querySelectorAll("[data-slop-marker]").length,
+    );
+    check(
+      "clearing the override restores the shipped operating point",
+      flaggedRestored === flaggedBefore,
+      `${flaggedRestored} of ${flaggedBefore} blocks`,
+    );
+
+    /* --------------------------------------------------- scope.md 9, allowlist */
+
+    await setup.evaluate(async () => {
+      await chrome.storage.local.set({ allowlist: ["http://127.0.0.1:8788"] });
+    });
+    const blocked = await context.newPage();
+    await blocked.goto("http://127.0.0.1:8788/", { waitUntil: "domcontentloaded" });
+    await new Promise((r) => setTimeout(r, 5000));
+    const onBlocked = await blocked.evaluate(() => ({
+      marked: document.querySelectorAll("[data-slop-marker]").length,
+      ranges: CSS.highlights?.get("slop-marker")?.size ?? 0,
+    }));
+    check(
+      "an allowlisted origin is not extracted at all",
+      onBlocked.marked === 0 && onBlocked.ranges === 0,
+      `${onBlocked.marked} blocks, ${onBlocked.ranges} ranges`,
+    );
+    await blocked.close();
+    await setup.evaluate(async () => {
+      await chrome.storage.local.remove("allowlist");
+    });
+
+    /* ------------------------------------------------ scope.md 7.4, port reconnect */
+
+    console.log("\n  port reconnect:");
+    const reconnect = await context.newPage();
+    reconnect.on("pageerror", (e) => console.log(`  [reconnect] uncaught: ${e.message}`));
+    reconnect.on("console", (m) => {
+      if (verbose || m.type() === "error" || m.type() === "warning") {
+        console.log(`  [reconnect] ${m.type()}: ${m.text()}`);
+      }
+    });
+    await reconnect.goto("http://127.0.0.1:8788/spa", { waitUntil: "domcontentloaded" });
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Stop the service worker under the content script. Its port disconnects, and the
+    // content script has to reconnect and re-ask -- the same code path a Firefox event-page
+    // unload takes (scope.md 7.4).
+    let killed = null;
+    try {
+      const cdp = await context.newCDPSession(reconnect);
+      const { targetInfos } = await cdp.send("Target.getTargets");
+      const worker = targetInfos.find((t) => t.type === "service_worker");
+      if (worker !== undefined) {
+        await cdp.send("Target.closeTarget", { targetId: worker.targetId });
+        killed = worker.url.split("/").pop();
+      }
+      await cdp.detach().catch(() => undefined);
+    } catch (err) {
+      console.log(`  [reconnect] could not stop the service worker: ${String(err)}`);
+    }
+    check(
+      "the service worker can be stopped mid-session",
+      killed !== null,
+      killed ?? "no service_worker target",
+    );
+
+    if (killed !== null) {
+      // Give the content script's onDisconnect its 500 ms reconnect delay, and Chrome a
+      // moment to notice the worker is gone.
+      await new Promise((r) => setTimeout(r, 3000));
+
+      await reconnect.evaluate((html) => {
+        document
+          .querySelector("#root")
+          .insertAdjacentHTML("beforeend", `<article id="added">${html}</article>`);
+      }, flaggedParagraphs);
+      await waitForHighlights(reconnect, 120_000);
+
+      const afterKill = await reconnect.evaluate(
+        () => document.querySelectorAll("#added [data-slop-marker]").length,
+      );
+      const ok = afterKill > 0;
+      if (!ok) {
+        // Say why, rather than reporting a bare zero. The interesting distinction is
+        // whether the worker came back at all, and whether the content script is still
+        // attached to a live extension context.
+        const workers = context.serviceWorkers().map((w) => w.url().split("/").pop());
+
+        // Through `setup`, not through a serviceWorker handle: a handle for a worker that
+        // was closed never settles, and this diagnostic then hangs the whole run.
+        const contexts = await withTimeout(
+          setup.evaluate(async () => {
+            const all = await chrome.runtime.getContexts({});
+            return all.map((c) => `${c.contextType}:${(c.documentUrl ?? "").split("/").pop()}`);
+          }),
+          10_000,
+          ["getContexts timed out"],
+        );
+        console.log(`  [reconnect] contexts after restart: ${contexts.join(", ")}`);
+        const state = await reconnect.evaluate(() => ({
+          added: document.querySelectorAll("#added p").length,
+          styled: document.getElementById("slop-marker-style") !== null,
+        }));
+        const err = await withTimeout(
+          setup.evaluate(
+            async () => (await chrome.storage.local.get("lastError")).lastError ?? null,
+          ),
+          10_000,
+          null,
+        );
+        console.log(
+          `  [reconnect] workers=[${workers.join(", ")}] addedParagraphs=${state.added} ` +
+            `styleInjected=${state.styled}` +
+            (err ? ` lastError=${err.where}: ${String(err.detail).slice(0, 120)}` : ""),
+        );
+      }
+      check(
+        "the content script reconnects and scoring resumes",
+        ok,
+        `${afterKill} marked after the worker was stopped`,
+      );
     }
   } finally {
     await context.close();
