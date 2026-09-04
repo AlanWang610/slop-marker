@@ -47,7 +47,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "slop-marker@localhost",
+      "id": "slop-marker@alanwang610.github.io",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": [

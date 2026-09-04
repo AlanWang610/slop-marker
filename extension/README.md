@@ -152,6 +152,36 @@ The manifest declares `data_collection_permissions: { required: ["none"] }`, whi
 requires and which is simply accurate: all inference is on-device and nothing is persisted
 beyond the local caches (§1, §11).
 
+### Signing
+
+Release and beta Firefox will not permanently install an unsigned extension, and there is
+no preference to override that. `about:debugging` takes the unsigned archive as a temporary
+add-on, but it is gone at restart. So a usable Firefox build has to be signed.
+
+Signing is on the **unlisted** channel: signed for self-distribution, not published in the
+AMO directory, which is what §13 asks for. Get a JWT issuer and secret from
+[the AMO API key page](https://addons.mozilla.org/developers/addon/api/key/), put them in
+the environment, and run:
+
+```
+$env:WEB_EXT_API_KEY = "user:12345:67"      # PowerShell; export ... on a shell
+$env:WEB_EXT_API_SECRET = "..."
+npm run package -- --browser=firefox --sign
+```
+
+Credentials are read from the environment and never from arguments, so they stay out of
+shell history and the process list. Afterwards the returned archive is checked for a
+`META-INF/mozilla.*` entry: an unsigned `.xpi` is byte-for-byte plausible and only reveals
+itself when Firefox refuses it at install time, which is exactly the failure worth catching
+early.
+
+Two things about it are effectively one-way. **The extension id is fixed at first signing**
+— it is `slop-marker@alanwang610.github.io`, a namespace tied to the GitHub account rather
+than the `@localhost` it started as, because changing it afterwards produces a different
+extension and every install has to be removed and re-added by hand. And **AMO refuses a
+version it has already seen**, so re-signing means bumping `version` in
+`src/assets/manifest.json` first.
+
 ## Verified
 
 | | |
@@ -212,11 +242,16 @@ be AI-written, so the *positive* direction is still only tested on generated mar
 pages is also a thin sample -- it says nothing about paywalls, infinite feeds on real
 sites, or lazy images that reflow the page under a highlight.
 
-**Nothing is AMO-signed.** `npm run package` builds both artifacts and reads them back
-— CRX3 header, signature, central directory, and `npm run e2e:firefox:xpi` installs the
-built `.xpi` and runs the whole Firefox suite against it. What it cannot do is
-`web-ext sign --channel=unlisted`, which needs the account's AMO API credentials. The
-archive produced here is exactly what that command would upload.
+**The Firefox build is not signed until you sign it.** `npm run package` builds both
+artifacts and reads them back — CRX3 header, signature, central directory — and
+`npm run e2e:firefox:xpi` installs the built `.xpi` and runs the whole Firefox suite against
+it. `--sign` submits to AMO and verifies the signature that comes back, but it needs your
+API credentials, so it is a step someone has to take deliberately. Until then release
+Firefox will not install the result. See "Signing" above.
+
+Chrome has no equivalent step, and its `.crx` is not an install route either: Chrome refuses
+off-store `.crx` files, so unpacked loading is the path for personal use and the `.crx`
+exists to prove the packaging is sound.
 
 The Chrome signing key is generated on the first `npm run package` and kept at
 `artifacts/packages/chrome-key.pem`, which is gitignored. It *is* the extension's identity:
