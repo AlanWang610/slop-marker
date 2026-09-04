@@ -30,6 +30,8 @@ const value = (name, fallback) => {
 };
 
 const browser = value("browser", "chrome");
+// Empty means "use the host baked into bundle-config.ts by tools/sync_extension_assets.py".
+const modelBaseUrl = value("model-base-url", "");
 const dev = flag("dev");
 const watch = flag("watch");
 
@@ -91,10 +93,11 @@ async function buildManifest() {
  * detection behaviour is identical -- a WebGPU path would need its own fp16 artifact and
  * its own calibration.
  *
- * esbuild resolves onnxruntime-web to dist/ort.bundle.min.mjs, which embeds the loader JS
- * and fetches only the .wasm, so the matching .mjs is copied purely as a safety net for a
- * future ORT that splits them again. If ORT ever asks for a file that is not here it 404s
- * loudly at session creation rather than degrading, and e2e/bench.html would catch it.
+ * Both files are needed: the runtime dynamically imports the .mjs at session creation and
+ * that module fetches the .wasm. The worker imports "onnxruntime-web/wasm" rather than
+ * "onnxruntime-web" for exactly this reason -- the default entry asks for the .jsep pair
+ * instead, and a missing file surfaces as a flat "no available backend found" at the first
+ * score, with the real cause one line further down. e2e/run.mjs is what caught it.
  */
 const ORT_RUNTIME = ["ort-wasm-simd-threaded.wasm", "ort-wasm-simd-threaded.mjs"];
 
@@ -129,7 +132,10 @@ const shared = {
   sourcemap: dev ? "inline" : false,
   logLevel: "warning",
   // Compiled away, so a dev build can keep assertions the shipped one drops.
-  define: { "process.env.NODE_ENV": JSON.stringify(dev ? "development" : "production") },
+  define: {
+    "process.env.NODE_ENV": JSON.stringify(dev ? "development" : "production"),
+    MODEL_HOST_OVERRIDE: JSON.stringify(modelBaseUrl),
+  },
 };
 
 async function run() {
@@ -158,7 +164,9 @@ async function run() {
 
   console.log(
     `built ${browser} v${manifest.version} -> dist/${browser} ` +
-      `(${jobs.length} bundles, ${wasm} ORT runtime files${dev ? ", dev" : ""})`,
+      `(${jobs.length} bundles, ${wasm} ORT runtime files${dev ? ", dev" : ""})` +
+      (modelBaseUrl ? `
+  model host overridden -> ${modelBaseUrl}` : ""),
   );
 }
 

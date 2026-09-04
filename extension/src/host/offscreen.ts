@@ -15,6 +15,22 @@ import { OFFSCREEN_PORT } from "../shared/protocol.js";
 import { Router } from "../router/shared.js";
 import { Host } from "./host.js";
 
+// Recorded before anything else can throw. Nothing shows this document's console -- devtools
+// does not list offscreen documents by default -- so if the module fails to evaluate, its
+// onConnect listener is never registered and every port silently gets no reply. The options
+// page reads this back, and it is the difference between "broken" and "broken, here".
+void chrome.storage.local.set({ offscreenBootedAt: Date.now() });
+self.addEventListener("error", (event) => {
+  void chrome.storage.local.set({
+    lastError: { at: Date.now(), where: "offscreen", detail: String(event.message) },
+  });
+});
+self.addEventListener("unhandledrejection", (event) => {
+  void chrome.storage.local.set({
+    lastError: { at: Date.now(), where: "offscreen", detail: String(event.reason) },
+  });
+});
+
 const router = new Router({
   ensureModel: async () => {
     const response: { ok: boolean; message?: string } | undefined =
@@ -32,10 +48,13 @@ chrome.runtime.onConnect.addListener((port) => {
   router.attachPort(port);
 });
 
+// Commands are answered by the service worker, which is the context that may fetch (see
+// router/shared.ts). The only thing this document needs to hear about is the model being
+// cleared, which invalidates the session it is holding.
 chrome.runtime.onMessage.addListener((message: { type: string }, _sender, sendResponse) => {
-  // downloadModel belongs to the service worker; everything else is answered here.
-  if (message.type === "downloadModel") return false;
-  return router.handleCommand(message, sendResponse);
+  if (message.type !== "clearModel") return false;
+  void router.disposeHost().then(() => sendResponse({ ok: true }));
+  return true;
 });
 
 void router.refresh();

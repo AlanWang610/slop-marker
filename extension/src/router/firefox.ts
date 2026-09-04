@@ -18,7 +18,7 @@
 
 import { Host } from "../host/host.js";
 import { PORT_NAME } from "../shared/protocol.js";
-import { downloadHere, Router } from "./shared.js";
+import { downloadHere, handleCommand, Router } from "./shared.js";
 
 const router = new Router({
   // Nothing constrains fetching here: Firefox ignores the COOP/COEP manifest keys.
@@ -33,7 +33,8 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 chrome.runtime.onMessage.addListener((message: { type: string }, _sender, sendResponse) =>
-  router.handleCommand(message, sendResponse),
+  // Nothing to relay here: the event page is both the fetching context and the Host.
+  handleCommand(message, sendResponse, () => void router.disposeHost()),
 );
 
 chrome.runtime.onInstalled.addListener((details) => {

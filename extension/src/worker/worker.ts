@@ -12,7 +12,13 @@
 /// <reference lib="webworker" />
 
 import { PreTrainedTokenizer } from "@huggingface/transformers";
-import * as ort from "onnxruntime-web";
+// The WASM-execution-provider-only build. The default entry point ("onnxruntime-web")
+// resolves to the JSEP bundle, which dynamically imports ort-wasm-simd-threaded.jsep.mjs
+// and its 26 MB companion in order to offer WebGPU and WebNN -- neither of which we use,
+// and both of which scope.md 5 rules out for behavioural parity. This subpath pulls the
+// 13 MB plain runtime instead, and it is what makes the trimmed ORT_RUNTIME list in
+// scripts/build.mjs correct rather than merely small.
+import * as ort from "onnxruntime-web/wasm";
 
 import { collapseWhitespace } from "../shared/normalize.js";
 import type { WorkerRequest, WorkerResponse } from "../shared/protocol.js";

@@ -75,6 +75,12 @@ export class Router {
     return this.#downloading;
   }
 
+  /** Drop the session, e.g. after the model cache is cleared under us. */
+  async disposeHost(): Promise<void> {
+    await this.#host?.dispose();
+    this.#host = null;
+  }
+
   #getHost(): Host {
     this.#host ??= this.env.createHost();
     return this.#host;
@@ -128,7 +134,15 @@ export class Router {
               return;
           }
         } catch (err) {
+          // Also recorded, not just logged. This runs in the Chrome offscreen document,
+          // whose console no devtools window shows by default -- so a Host that fails to
+          // start looks exactly like a page with no AI text on it. The options page reads
+          // this back.
+          const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
           console.error("slop-marker router:", err);
+          void chrome.storage.local.set({
+            lastError: { at: Date.now(), where: message.type, detail },
+          });
         }
       })();
     });
@@ -139,51 +153,81 @@ export class Router {
     });
   }
 
-  /** Options-page and first-run-page commands. Same on both browsers. */
-  handleCommand(message: { type: string }, sendResponse: (response: unknown) => void): boolean {
-    switch (message.type) {
-      case "getStatus":
-        void (async () => {
-          await this.refresh();
-          const stored = await chrome.storage.local.get("threading");
-          sendResponse({
-            modelState: this.#state,
-            modelVersion: MODEL_VERSION,
-            cachedScores: await scoreCache.size(),
-            threading: stored["threading"] ?? null,
-          });
-        })();
-        return true;
-
-      case "downloadModel":
-        void this.ensureModel().then(
-          () => sendResponse({ ok: true, state: this.#state }),
-          (err: unknown) => sendResponse({ ok: false, message: String(err) }),
-        );
-        return true;
-
-      case "clearModel":
-        void (async () => {
-          await this.#host?.dispose();
-          this.#host = null;
-          await modelStore.clearCache();
-          await scoreCache.clear();
-          this.#setState({ phase: "absent" });
-          sendResponse({ ok: true });
-        })();
-        return true;
-
-      case "clearScores":
-        void scoreCache.clear().then(() => sendResponse({ ok: true }));
-        return true;
-
-      default:
-        return false;
-    }
-  }
 }
 
 /** Download directly. Used where COEP does not constrain fetching. */
 export async function downloadHere(onState?: (state: ModelState) => void): Promise<void> {
   await modelStore.download(MODEL_VERSION, onState ?? (() => undefined));
+}
+
+/**
+ * Options- and first-run-page commands, answered by whichever context may fetch: the
+ * service worker on Chrome, the event page on Firefox.
+ *
+ * Deliberately independent of the Host. On Chrome the Host lives in an offscreen document
+ * that is created lazily, so routing status through it meant the first page to ask got no
+ * answer at all -- sendMessage reaches every extension context, and if none of them handles
+ * the message the promise resolves to undefined. Everything here reads storage.local and
+ * the Cache API, which any context can do.
+ */
+export function handleCommand(
+  message: { type: string },
+  sendResponse: (response: unknown) => void,
+  onModelCleared?: () => void,
+): boolean {
+  switch (message.type) {
+    case "getStatus":
+      void (async () => {
+        const cached = await modelStore.isCached(MODEL_VERSION);
+        const stored = await chrome.storage.local.get(["modelState", "threading"]);
+        const previous = stored["modelState"] as ModelState | undefined;
+        // The Cache API is the ground truth; a stored error survives until a retry clears it.
+        const state: ModelState = cached
+          ? { phase: "ready", version: MODEL_VERSION }
+          : (previous?.phase === "downloading" ||
+              previous?.phase === "verifying" ||
+              previous?.phase === "error"
+              ? previous
+              : { phase: "absent" });
+        sendResponse({
+          modelState: state,
+          modelVersion: MODEL_VERSION,
+          cachedScores: await scoreCache.size(),
+          threading: stored["threading"] ?? null,
+        });
+      })();
+      return true;
+
+    case "downloadModel":
+      void (async () => {
+        try {
+          await modelStore.download(MODEL_VERSION, (state) => {
+            void chrome.storage.local.set({ modelState: state });
+          });
+          sendResponse({ ok: true });
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err);
+          await chrome.storage.local.set({ modelState: { phase: "error", message: detail } });
+          sendResponse({ ok: false, message: detail });
+        }
+      })();
+      return true;
+
+    case "clearModel":
+      void (async () => {
+        await modelStore.clearCache();
+        await scoreCache.clear();
+        await chrome.storage.local.set({ modelState: { phase: "absent" } });
+        onModelCleared?.();
+        sendResponse({ ok: true });
+      })();
+      return true;
+
+    case "clearScores":
+      void scoreCache.clear().then(() => sendResponse({ ok: true }));
+      return true;
+
+    default:
+      return false;
+  }
 }

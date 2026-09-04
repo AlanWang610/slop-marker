@@ -48,8 +48,12 @@ export const MODEL_VERSION = {version};
  * Where the bundle is served from (scope.md 6.4). Files are fetched as
  * `${{MODEL_BASE_URL}}/${{MODEL_VERSION}}/${{file}}`, which is the layout GitHub Releases
  * gives you for free when the release tag is the model version.
+ *
+ * `scripts/build.mjs --model-base-url=<url>` overrides it at bundle time without editing
+ * this file, which is how e2e/run.mjs points a build at its own throwaway local host.
  */
-export const MODEL_BASE_URL = {base_url};
+declare const MODEL_HOST_OVERRIDE: string;
+export const MODEL_BASE_URL: string = MODEL_HOST_OVERRIDE || {base_url};
 
 /**
  * What is actually downloaded. Only the weights: the tokenizer and the calibration

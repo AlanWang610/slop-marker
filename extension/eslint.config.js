@@ -27,6 +27,14 @@ export default tseslint.config(
         performance: "readonly",
         fetch: "readonly",
         URL: "readonly",
+        // e2e/run.mjs passes callbacks to page.evaluate(); their bodies are serialised and
+        // run in the browser, so they legitimately reference DOM and extension globals.
+        document: "readonly",
+        window: "readonly",
+        self: "readonly",
+        CSS: "readonly",
+        chrome: "readonly",
+        setTimeout: "readonly",
       },
     },
   },

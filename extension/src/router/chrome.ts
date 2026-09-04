@@ -13,7 +13,7 @@
  *      assets do not send. A service worker is not an extension *page* and is unaffected.
  */
 
-import { downloadHere } from "./shared.js";
+import { handleCommand } from "./shared.js";
 import { OFFSCREEN_PORT, PORT_NAME } from "../shared/protocol.js";
 
 const OFFSCREEN_URL = "host.html";
@@ -45,53 +45,82 @@ async function ensureOffscreen(): Promise<void> {
   await creating;
 }
 
-/** Relay a content-script port to the offscreen document, verbatim, in both directions. */
+/**
+ * Relay a content-script port to the offscreen document, verbatim, in both directions.
+ *
+ * The listener is attached SYNCHRONOUSLY and buffers, which is not a nicety. A content
+ * script posts `hello` in the same turn it calls `connect()`, while this side is still
+ * awaiting `ensureOffscreen()` -- creating an offscreen document is slow the first time.
+ * Chrome does not queue port messages for a listener that does not exist yet, so without
+ * the buffer that first `hello` is dropped and the page is simply never scored. It fails
+ * silently and only on the first page after a browser start, which is the worst shape a
+ * bug can have.
+ */
 function relay(port: chrome.runtime.Port): void {
-  const downstream = chrome.runtime.connect({ name: OFFSCREEN_PORT });
-  const up = (message: unknown): void => {
-    try {
-      port.postMessage(message);
-    } catch {
-      /* page went away */
+  const pending: unknown[] = [];
+  let downstream: chrome.runtime.Port | null = null;
+  let closed = false;
+
+  port.onMessage.addListener((message: unknown) => {
+    if (downstream === null) pending.push(message);
+    else {
+      try {
+        downstream.postMessage(message);
+      } catch {
+        /* offscreen restarting */
+      }
     }
-  };
-  const down = (message: unknown): void => {
-    try {
-      downstream.postMessage(message);
-    } catch {
-      /* offscreen restarting */
-    }
-  };
-  downstream.onMessage.addListener(up);
-  port.onMessage.addListener(down);
-  downstream.onDisconnect.addListener(() => port.disconnect());
-  port.onDisconnect.addListener(() => downstream.disconnect());
+  });
+  port.onDisconnect.addListener(() => {
+    closed = true;
+    downstream?.disconnect();
+  });
+
+  void ensureOffscreen().then(
+    () => {
+      if (closed) return;
+      downstream = chrome.runtime.connect({ name: OFFSCREEN_PORT });
+      downstream.onMessage.addListener((message: unknown) => {
+        try {
+          port.postMessage(message);
+        } catch {
+          /* page went away */
+        }
+      });
+      downstream.onDisconnect.addListener(() => port.disconnect());
+      for (const message of pending) downstream.postMessage(message);
+      pending.length = 0;
+    },
+    (err: unknown) => {
+      console.error("slop-marker: could not create the offscreen document:", err);
+      void chrome.storage.local.set({
+        lastError: { at: Date.now(), where: "offscreen", detail: String(err) },
+      });
+      port.disconnect();
+    },
+  );
 }
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== PORT_NAME) return;
-  void ensureOffscreen().then(
-    () => relay(port),
-    (err: unknown) => {
-      console.error("slop-marker: could not create the offscreen document:", err);
-      port.disconnect();
-    },
-  );
+  relay(port);
 });
 
 /**
- * `downloadModel` is answered here rather than being relayed, since this is the context
- * that may fetch. Everything else is the offscreen document's business, so it is left
- * unhandled and the offscreen listener answers it.
+ * Every page command is answered here, not in the offscreen document.
+ *
+ * The offscreen document is created lazily, and `sendMessage` that no context handles
+ * resolves to `undefined` rather than failing -- so routing status through the offscreen
+ * meant the first page to ask silently got nothing back. The service worker always exists
+ * when a message arrives, and it is also the only context that may fetch.
  */
-chrome.runtime.onMessage.addListener((message: { type: string }, _sender, sendResponse) => {
-  if (message.type !== "downloadModel") return false;
-  void downloadHere().then(
-    () => sendResponse({ ok: true }),
-    (err: unknown) => sendResponse({ ok: false, message: String(err) }),
-  );
-  return true;
-});
+chrome.runtime.onMessage.addListener((message: { type: string }, _sender, sendResponse) =>
+  handleCommand(message, sendResponse, () => {
+    // Best-effort: if the offscreen document is holding a session for a model we just
+    // deleted, ask it to drop it. It may not exist, and that is fine.
+    void chrome.runtime.sendMessage({ type: "clearModel" }).catch(() => undefined);
+  }),
+);
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason !== "install") return;
