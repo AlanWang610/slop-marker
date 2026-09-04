@@ -33,6 +33,13 @@ MIN_SPEARMAN = 0.95
 MAX_GENRE_FPR_UPPER = 0.02
 MIN_HUMAN_WINDOWS_PER_GENRE = 500
 
+# The per-genre bound above is chunk-level, and a chunk is not what anyone sees. A
+# reader sees a highlighted *run*, produced only after the length penalty, run pooling,
+# the document prior and the 150-word minimum. A document that flags is the actual
+# false positive, so it gets its own bound and its own evidence.
+MAX_DOCUMENT_FPR_UPPER = 0.03
+MIN_HUMAN_DOCUMENTS = 300
+
 
 def release_gate(report: dict[str, Any]) -> dict[str, Any]:
     """Decide whether the artifact described by `report` may ship."""
@@ -84,6 +91,20 @@ def release_gate(report: dict[str, Any]) -> dict[str, Any]:
                 failures.append(
                     f"{genre} FPR upper bound {row['fpr_upper']:.4f} exceeds {MAX_GENRE_FPR_UPPER}"
                 )
+
+    document = report.get("document_fpr")
+    if document is None:
+        failures.append("document-level FPR did not run")
+    elif document["n_human"] < MIN_HUMAN_DOCUMENTS:
+        failures.append(
+            f"document-level FPR measured on {document['n_human']} documents,"
+            f" below {MIN_HUMAN_DOCUMENTS}; the bound is not informative"
+        )
+    elif document["doc_level_fpr_upper"] > MAX_DOCUMENT_FPR_UPPER:
+        failures.append(
+            f"document-level FPR upper bound {document['doc_level_fpr_upper']:.4f}"
+            f" exceeds {MAX_DOCUMENT_FPR_UPPER}"
+        )
 
     return {"passed": not failures, "failures": failures}
 

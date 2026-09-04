@@ -74,6 +74,39 @@ train_image = _with_local(base)
 export_image = _with_local(export_base)
 
 
+def _score_chunks(texts: list[str], session: Any, tokenizer: Any) -> list[float]:
+    """Adapt an ONNX session to the ChunkScorer protocol in eval.documents."""
+    import numpy as np
+
+    encoded = tokenizer(texts, padding=True, truncation=True, max_length=512, return_tensors="np")
+    logits = session.run(
+        None,
+        {
+            "input_ids": encoded["input_ids"].astype(np.int64),
+            "attention_mask": encoded["attention_mask"].astype(np.int64),
+        },
+    )[0]
+    return [float(v) for v in np.asarray(logits).reshape(-1)]
+
+
+def _held_out_human_documents(root: Any, version: str, limit: int) -> list[Any]:
+    """Human documents whose windows landed in the test split, sampled deterministically."""
+    import random
+
+    from slopmarker.corpus.build import load_documents
+    from slopmarker.data.dataset import load_windows
+
+    by_id = {d.doc_id: d for d in load_documents(root, "interim")}
+    doc_ids = sorted({w.doc_id for w in load_windows(root, version, "test")})
+    human = [
+        by_id[doc_id]
+        for doc_id in doc_ids
+        if doc_id in by_id and by_id[doc_id].doc_class == "human"
+    ]
+    random.Random(0).shuffle(human)
+    return human[:limit]
+
+
 @app.function(
     image=train_image,
     gpu="H100",
@@ -199,9 +232,10 @@ def export_and_calibrate(
     from transformers import AutoTokenizer
 
     from slopmarker.data.dataset import load_windows
-    from slopmarker.data.normalize import collapse_whitespace
+    from slopmarker.data.normalize import collapse_whitespace, strip_markdown
     from slopmarker.eval.calibrate import calibrate, verify
     from slopmarker.eval.calibration import AggregateParams, Calibration, t_off_from
+    from slopmarker.eval.documents import document_fpr
     from slopmarker.export.bundle import assemble
     from slopmarker.export.gates import compare_scores as _compare
     from slopmarker.export.gates import release_gate
@@ -342,6 +376,23 @@ def export_and_calibrate(
         "per_genre": [vars(g) for g in result.per_genre],
     }
     report["test_verification"] = checked
+
+    # Document-level FPR, through the full scope.md 8 path on the artifact that ships.
+    # It has to run here rather than as a separate step, because it needs the
+    # calibration this function just produced and it gates the bundle this function is
+    # about to assemble. Held-out human documents only: the question is how often a
+    # reader is shown a highlight on prose no model wrote.
+    documents = [
+        strip_markdown(doc.text) for doc in _held_out_human_documents(root, version, limit=1200)
+    ]
+    print(f"document-level FPR over {len(documents)} held-out human documents")
+    report["document_fpr"] = document_fpr(
+        documents,
+        lambda texts: _score_chunks(texts, session, tokenizer),
+        calibration,
+    )
+    print(f"  {report['document_fpr']}")
+
     report["gate"] = release_gate(report)
 
     if report["gate"]["passed"]:
@@ -900,11 +951,10 @@ def document_eval(
     from transformers import AutoTokenizer
 
     from slopmarker.corpus.build import load_documents
-    from slopmarker.data.chunking import chunk_block
     from slopmarker.data.dataset import load_windows
-    from slopmarker.data.normalize import collapse_whitespace, strip_markdown
-    from slopmarker.eval.aggregate import Chunk, aggregate
+    from slopmarker.data.normalize import strip_markdown
     from slopmarker.eval.calibration import Calibration
+    from slopmarker.eval.documents import score_document
     from slopmarker.eval.metrics import auroc, clopper_pearson_upper
 
     volume.reload()
@@ -923,43 +973,8 @@ def document_eval(
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
     rng = random.Random(0)
 
-    def score_document(text: str) -> dict[str, Any] | None:
-        """Chunk exactly as the extension does, score on int8, aggregate per scope.md 8."""
-        chunks = chunk_block(collapse_whitespace(text))
-        if not chunks:
-            return None
-        scored: list[Chunk] = []
-        for start in range(0, len(chunks), 32):
-            batch = chunks[start : start + 32]
-            enc = tokenizer(
-                batch, padding=True, truncation=True, max_length=512, return_tensors="np"
-            )
-            logits = session.run(
-                None,
-                {
-                    "input_ids": enc["input_ids"].astype(np.int64),
-                    "attention_mask": enc["attention_mask"].astype(np.int64),
-                },
-            )[0]
-            scored.extend(
-                Chunk(logit=float(value), words=len(chunk.split()))
-                for value, chunk in zip(np.asarray(logits).reshape(-1), batch, strict=True)
-            )
-        result = aggregate(scored, cal)
-        flagged = result.flagged_runs
-        return {
-            "n_chunks": len(scored),
-            "words": sum(c.words for c in scored),
-            "flagged": bool(flagged),
-            "flagged_words": sum(r.words for r in flagged),
-            "max_run_score": max((r.score for r in result.runs), default=0.0),
-            # The ranking score, and it must not be max_run_score. Runs exist only above
-            # t_on, so every document without one takes the same default and the classes
-            # pile up tied at a single value -- which makes AUROC a statement about the
-            # ties rather than the model. The strongest penalized chunk is always
-            # defined and orders documents that never fire.
-            "max_chunk_p": max(result.chunk_p_penalized, default=0.0),
-        }
+    def score(text: str) -> dict[str, Any] | None:
+        return score_document(text, lambda t: _score_chunks(t, session, tokenizer), cal)
 
     documents: list[dict[str, Any]] = []
     if source == "raid":
@@ -1036,7 +1051,7 @@ def document_eval(
     for index, row in enumerate(documents):
         if index and index % 200 == 0:
             print(f"  {index}/{len(documents)}")
-        scored = score_document(row["text"])
+        scored = score(row["text"])
         if scored is None:
             continue
         results.append(

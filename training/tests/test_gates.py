@@ -28,6 +28,8 @@ def healthy() -> dict[str, Any]:
                 for g in ("news", "blog_personal", "technical_docs")
             }
         },
+        # The user-visible bound. See test_documents.py for what it gates.
+        "document_fpr": {"n_human": 1000, "doc_level_fpr": 0.002, "doc_level_fpr_upper": 0.0063},
     }
 
 
