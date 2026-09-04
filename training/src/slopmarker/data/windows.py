@@ -108,12 +108,16 @@ def sample_windows(
     if not sentence_spans:
         return []
 
-    # Word count at each sentence start, so a word offset can be mapped to a sentence.
+    # Per-sentence word counts, computed once. The placement loop below runs up to
+    # MAX_PLACEMENT_TRIES times per window and walks sentences each time, so
+    # recomputing these inside it would call count_words -- a character-by-character
+    # scan -- thousands of times per document.
+    sentence_words = [count_words(text[start:end]) for start, end in sentence_spans]
     starts_at_word: list[int] = []
     running = 0
-    for start, end in sentence_spans:
+    for words in sentence_words:
         starts_at_word.append(running)
-        running += count_words(text[start:end])
+        running += words
     total_words = running
     if total_words < buckets[0][0]:
         return []
@@ -124,7 +128,7 @@ def sample_windows(
     windows: list[Window] = []
     for _ in range(n_target):
         window = _place_one(
-            text, sentence_spans, starts_at_word, total_words, rng, buckets, windows
+            text, sentence_spans, sentence_words, starts_at_word, total_words, rng, buckets, windows
         )
         if window is not None:
             windows.append(window)
@@ -145,6 +149,7 @@ def sample_windows(
 def _place_one(
     text: str,
     sentence_spans: list[tuple[int, int]],
+    sentence_words: list[int],
     starts_at_word: list[int],
     total_words: int,
     rng: np.random.Generator,
@@ -165,8 +170,7 @@ def _place_one(
         last = -1
         words = 0
         for index in range(first, len(sentence_spans)):
-            span_start, span_end = sentence_spans[index]
-            span_words = count_words(text[span_start:span_end])
+            span_words = sentence_words[index]
             if words and words + span_words > max_words:
                 break
             words += span_words

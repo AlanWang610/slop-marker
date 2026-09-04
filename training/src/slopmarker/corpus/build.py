@@ -13,6 +13,7 @@ so a cluster is not filled with documents that are about to be removed.
 from __future__ import annotations
 
 import json
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -47,10 +48,17 @@ def load_raid_index(root: Path) -> RaidIndex | None:
     return RaidIndex.build(json.loads(path.read_text(encoding="utf-8")))
 
 
-def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
+def build(root: Path, cfg: CorpusConfig, version: str, *, log: Any = print) -> dict[str, Any]:
+    started = time.time()
+
+    def step(name: str) -> None:
+        """Stage timing. Without it a slow stage is indistinguishable from a hang."""
+        log(f"[{time.time() - started:7.1f}s] {name}")
+
     # Both halves of the corpus. The cross-class dedup below is why they are loaded
     # together: rewrite and continuation rows are seeded from human documents, so
     # near-duplicate pairs straddling the class boundary are guaranteed otherwise.
+    step("loading documents")
     documents = load_documents(root, "interim") + load_documents(root, "generated")
     stats: dict[str, Any] = {"version": version, "harvested": len(documents)}
     if not documents:
@@ -58,6 +66,7 @@ def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
 
     by_id = {doc.doc_id: doc for doc in documents}
 
+    step("genre labelling")
     # 0. Genre for anything no URL rule matched, from the text alone. Text-only is
     #    required rather than convenient: the AI side has no URL, so a URL-derived
     #    human label and a prompt-derived AI label would make the labelling process
@@ -70,12 +79,14 @@ def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
             relabelled += 1
     stats["genre_relabelled_from_text"] = relabelled
 
+    step("exact dedup")
     # 1. Exact duplicates, over the hash-normalized form.
     duplicates = exact_duplicates((doc.doc_id, doc.text) for doc in documents)
     for doc_id in duplicates:
         by_id.pop(doc_id, None)
     stats["exact_duplicates_removed"] = len(duplicates)
 
+    step("minhash clustering")
     # 2. Near-duplicate clusters. The cluster id becomes the split grouping key.
     clusters = cluster_near_duplicates(
         ((doc_id, doc.text) for doc_id, doc in by_id.items()),
@@ -88,6 +99,7 @@ def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
         by_id[doc_id].minhash_cluster = cluster_id
     stats["clusters"] = len(set(clusters.values()))
 
+    step("raid decontamination")
     # 3. RAID decontamination. Reported, because that number is what makes the
     #    external evaluation credible.
     raid = load_raid_index(root)
@@ -103,12 +115,14 @@ def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
     stats["raid_contaminated_removed"] = removed_by_raid
     stats["raid_index_present"] = raid is not None
 
+    step("cluster caps")
     # 4. Cap per cluster, so one viral document cannot dominate a genre.
     max_per_cluster = cfg.caps.get("max_documents_per_cluster", 3)
     keep = set(cap_per_cluster({d: clusters[d] for d in by_id}, max_per_cluster))
     by_id = {doc_id: doc for doc_id, doc in by_id.items() if doc_id in keep}
     stats["after_cluster_cap"] = len(by_id)
 
+    step("split assignment")
     # 5. Split assignment, on groups rather than documents.
     #
     #    A human seed must share its derivatives' group. AI rows carry
@@ -139,6 +153,7 @@ def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
         )
         doc.split = assign_split(doc.group_key, cfg.split_salt, cfg.splits)
 
+    step("windowing")
     # 6. Windows. The per-window AI fraction comes from the document's spans.
     windows: list[WindowRow] = []
     for doc in by_id.values():
@@ -176,11 +191,13 @@ def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
                 )
             )
 
+    step(f"writing {len(windows)} windows")
     _write_windows(root, windows, version)
     stats.update(_summarize(by_id.values(), windows))
     (root / "processed" / version / "manifest.json").write_text(
         json.dumps(stats, indent=2), encoding="utf-8"
     )
+    step("done")
     return stats
 
 
