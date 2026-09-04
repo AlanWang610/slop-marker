@@ -141,6 +141,7 @@ def quantize_int8(
     quantize_embeddings: bool = True,
     per_channel: bool = False,
     const_b_only: bool = True,
+    reduce_range: bool = False,
 ) -> dict[str, Any]:
     """Dynamic int8 quantization, then assert it actually happened.
 
@@ -168,11 +169,13 @@ def quantize_int8(
         weight_type=QuantType.QInt8,
         op_types_to_quantize=op_types,
         per_channel=per_channel,
+        reduce_range=reduce_range,
         extra_options={"MatMulConstBOnly": const_b_only},
     )
     report = verify_quantized(fp32_path, int8_path, op_types)
     report["per_channel"] = per_channel
     report["const_b_only"] = const_b_only
+    report["reduce_range"] = reduce_range
     return report
 
 

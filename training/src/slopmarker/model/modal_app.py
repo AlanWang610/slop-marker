@@ -610,7 +610,7 @@ def quantization_sweep(
     from slopmarker.data.dataset import load_windows
     from slopmarker.data.normalize import collapse_whitespace
     from slopmarker.export.gates import compare_scores
-    from slopmarker.export.onnx_export import quantize_int8
+    from slopmarker.export.onnx_export import quantize_int8, to_fp16
 
     volume.reload()
     root = Path(DATA_ROOT)
@@ -662,7 +662,7 @@ def quantization_sweep(
     # products as well as the weights. The four const_b_only=True rows are the recipes
     # actually worth choosing between; the False rows stay in so the comparison is on
     # the record rather than asserted.
-    variants = {
+    variants: dict[str, dict[str, Any] | None] = {
         "weights_only": {"quantize_embeddings": False, "const_b_only": True},
         "weights_only_per_channel": {
             "quantize_embeddings": False,
@@ -675,12 +675,26 @@ def quantization_sweep(
             "per_channel": True,
             "const_b_only": True,
         },
-        "all_matmul_gather": {"quantize_embeddings": True, "const_b_only": False},
+        # reduce_range holds weights to 7 bits, leaving headroom in the int32
+        # accumulator. It is normally an old-hardware workaround, but when activations
+        # carry outliers it also stops the products saturating, so it is worth a row.
+        "weights_gather_reduce_range": {
+            "quantize_embeddings": True,
+            "per_channel": True,
+            "const_b_only": True,
+            "reduce_range": True,
+        },
+        # The control: half precision quantizes nothing and should track fp32. If it
+        # does and int8 does not, the damage is activation range rather than weights.
+        "fp16": None,
     }
     results: dict[str, Any] = {}
     for name, kwargs in variants.items():
         path = export_dir / f"model.{name}.onnx"
-        quantization = quantize_int8(fp32, path, **kwargs)  # type: ignore[arg-type]
+        if kwargs is None:
+            quantization = to_fp16(fp32, path)
+        else:
+            quantization = quantize_int8(fp32, path, **kwargs)  # type: ignore[arg-type]
         comparison = compare_scores(baseline, run(path))
         results[name] = {"quantization": quantization, "comparison": comparison}
         print(
