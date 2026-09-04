@@ -1,6 +1,6 @@
 /** Loader for the cross-language fixtures in <repo>/fixtures, shared by both test suites. */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -57,4 +57,14 @@ export interface AggregateFixture {
       }>;
     };
   }>;
+}
+
+/**
+ * Local bundle directory for a model version, or null when it has not been pulled.
+ * Model-dependent fixtures skip rather than fail in that case -- the bundle never enters
+ * git (artifacts/ is ignored), so a fresh checkout legitimately does not have it.
+ */
+export function bundleDirFor(modelVersion: string): string | null {
+  const dir = join(FIXTURE_DIR, "..", "artifacts", "bundles", modelVersion);
+  return existsSync(dir) ? dir : null;
 }

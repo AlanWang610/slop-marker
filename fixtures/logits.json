@@ -1,0 +1,319 @@
+{
+  "version": 1,
+  "model_version": "mb-base-0.2.0-dev",
+  "note": "The oracle the browser must reproduce. Logits from the shipped int8 ONNX under Python onnxruntime, batch 1, no padding. A WASM session that loads and runs but returns different numbers is the failure this pins down.",
+  "max_length": 512,
+  "tolerance": 0.001,
+  "cases": [
+    {
+      "text": "The reason the gap is small is visible in the per-genre thresholds below. They span 0.179 to 0.840, which looks like a lot -- but the classes are separated well enough in every genre (AUC 0.987 to 0.998) that moving the threshold across that range costs little recall. A single threshold is cheap precisely because the model is good.",
+      "n_tokens": 78,
+      "logit": -0.6602247953414917
+    },
+    {
+      "text": "0.7% of windows land on opposite sides of the threshold between the two artifacts. That is the honest cost of quantization for a reader: roughly one highlighted passage in 140 would differ had the extension shipped fp32 at 599 MB.",
+      "n_tokens": 49,
+      "logit": 4.32919979095459
+    },
+    {
+      "text": "P2 is the one that gives the game away: erase every letter, keep only punctuation and spacing, and the classes are still separable at 0.856. P9 says the same thing from the other side -- in-distribution 0.932 against held-out 0.927 means the probe transfers perfectly to generators it has never seen, so it learned the harness rather than AI writing.",
+      "n_tokens": 83,
+      "logit": 3.866589069366455
+    },
+    {
+      "text": "The strongest single driver is lexical diversity, which is a property of AI writing and exactly what a detector should key on. So is em-dash rate, word length and comma density -- these were deliberately left alone, since removing them would make the corpus easier than the web.",
+      "n_tokens": 58,
+      "logit": 4.940097808837891
+    },
+    {
+      "text": "The residual artifact is the same family as the digit problem, one level down: human documents carry proper nouns, named sources and parenthetical asides that AI text about the same topic does not reproduce as densely. Passing figures into the prompts reduced this; passing entities did not fully close it.",
+      "n_tokens": 63,
+      "logit": 3.2576963901519775
+    },
+    {
+      "text": "Two of the three remaining failures are substantially explained by legitimate style signal, and P9 passing is evidence the corpus is not merely encoding our harness -- the bag-of-words probe now loses measurable ground on generators it has never seen.",
+      "n_tokens": 49,
+      "logit": 3.6695046424865723
+    },
+    {
+      "text": "But this is not proof, and the bands were not met. The residual specificity confound is real and will inflate measured performance relative to production, where AI text is often edited and human text is not uniformly citation-dense. The per-genre false-positive numbers should be read with that in mind.",
+      "n_tokens": 64,
+      "logit": 3.1931710243225098
+    },
+    {
+      "text": "A fourth corpus iteration targeting entity density is the obvious next step. It was not run because each cycle is roughly ninety minutes and the returns were diminishing; that is a scheduling decision, not a claim that the corpus is clean.",
+      "n_tokens": 47,
+      "logit": 4.315155506134033
+    },
+    {
+      "text": "Everything in `calibration-*.md` is chunk-level, and a chunk is not what anyone sees. A reader sees a highlighted **run**, produced only after the length penalty, run pooling, the document prior and the 150-word minimum. These numbers come from the whole scope.md 8 path -- `chunk_block` -> int8 ONNX -> `aggregate` -- on the artifact that ships.",
+      "n_tokens": 88,
+      "logit": 3.376232624053955
+    },
+    {
+      "text": "The top four are continuous prose, which is what this corpus is made of. The bottom two are structurally different text -- recipes are ingredient lists and imperative steps, poetry is verse -- and the model is at chance on both. Neither appears anywhere in training. That is a legible boundary rather than a mystery, and it is also a warning: the corpus covers eight web genres and generalizes within that shape, not outside it.",
+      "n_tokens": 88,
+      "logit": 3.8862266540527344
+    },
+    {
+      "text": "Whitespace scoring *higher* than unattacked is about two standard errors at this size. It persisted from a smaller run rather than washing out, and the plausible mechanism is that whitespace insertion fragments tokenization into sequences that read as un-humanlike. Treat it as unexplained, not as evidence of robustness.",
+      "n_tokens": 65,
+      "logit": 4.025093078613281
+    },
+    {
+      "text": "1. **A stream prefix is not a sample.** RAID's train split is ordered by domain, so reading the first 60k rows returned 1,493 documents all from `abstracts`, with three attacks of twelve, and reported an AUROC for it. Now stratified by (domain, class, attacked) cell over the whole file, printing which domains it reached. 2. **AUROC over ties describes the ties.** Documents were ranked by `max_run_score`, which defaults to 0.0 when no run clears `t_on`. 86% of RAID documents produce no run, so both classes collapsed onto one value and AUROC sat near chance by construction -- the 0.563 first reported. Ranking now uses the strongest penalized chunk, which is always defined. 3. **Genre came from the wrong place.** `build()` relabels documents still marked `other` from their text and writes the result into the windows without updating `interim/`, so reading `doc.genre` reported the harvester's guess. It put 42% of the sample in a bucket the corpus manifest does not contain and made `blog_personal` vanish. The headline FPR never depended on genre; the per-genre attribution did, and it was wrong -- an earlier reading blamed `press_release` for a false positive that was actually a personal blog.",
+      "n_tokens": 289,
+      "logit": 3.656841278076172
+    },
+    {
+      "text": "A fourth is worth noting as a reproducibility fix rather than a defect in a published number: the document pool was built by iterating a `set` of document ids, and Python randomizes string hashing per process, so the seeded shuffle drew a different sample on every run. `test_human` measured 3/1,500 before the fix and 5/1,500 after -- two draws from the same population, overlapping intervals, no change to any conclusion, but only the second is reproducible.",
+      "n_tokens": 103,
+      "logit": 3.554276943206787
+    },
+    {
+      "text": "The first export produced a complete, checksummed six-file bundle containing a model that had lost twenty points of AUROC. It was assembled because nothing in the export path scores the model, and the release gate that would have caught it was specified, written into the plan, and never implemented.",
+      "n_tokens": 63,
+      "logit": 4.052989482879639
+    },
+    {
+      "text": "The fp32 parity result is the one worth dwelling on. It is genuinely good, and it proves the export is faithful -- the ModernBERT sliding-window mask did not constant-fold, which was the failure this project spent the most design effort guarding against. It says nothing whatever about the quantized graph, because it was measured on the fp32 graph, before quantization ran.",
+      "n_tokens": 80,
+      "logit": 3.6683034896850586
+    },
+    {
+      "text": "Two variables moved between the 0.9939 and the 0.7849: the artifact (PyTorch to int8) and the split (val to calibration/test). Scoring both full splits with PyTorch separated them -- test at 0.9939 is if anything higher than val, so the split is not the explanation and the model is intact.",
+      "n_tokens": 76,
+      "logit": -2.7729833126068115
+    },
+    {
+      "text": "That leaves quantization, and the first hypothesis was wrong. `onnx_export.py` named the embedding `Gather` in its own module docstring as \"the riskiest step in this pipeline for a detector whose signal is lexical\", so the `Gather` was the obvious suspect. Measured, it is not: leaving the embedding table entirely in fp32 scores 0.8027 against the 0.8103 that quantizes it. The docstring read as evidence because it was confidently written, but nothing in it had been measured.",
+      "n_tokens": 115,
+      "logit": 1.8831480741500854
+    },
+    {
+      "text": "1. `extra_options={\"MatMulConstBOnly\": False}`. ONNX Runtime defaults this to True, restricting quantization to MatMuls with a constant B operand -- the weights. False also quantizes the activation-by-activation products inside attention, Q.K^T and attn.V, which hold no weights and degrade badly in int8. Fixing it recovered 17 points of AUROC. The node count had said so all along: ModernBERT-base has 22 x 4 weight MatMuls plus a two-MatMul head, so 90 is correct and the export produced 136. The assertion was `>= 80` with no ceiling, so quantizing half again too much looked exactly like quantizing correctly. 2. Dynamic quantization of *activations*, which no op list can switch off. This is what still cost 4-6 points of pAUC afterwards, and it is why the fix is weight-only quantization rather than a better dynamic recipe. See the recipe table below.",
+      "n_tokens": 213,
+      "logit": 3.37351131439209
+    },
+    {
+      "text": "A recall of 2.9% at the shipped threshold is the model failing, not the threshold being conservative. The oracle gap of 0.203 was the number this project most wanted -- the empirical cost of scope.md 4.4's decision to ship one global threshold -- and it cannot be read off a broken artifact. It remains unmeasured.",
+      "n_tokens": 72,
+      "logit": 1.4866565465927124
+    },
+    {
+      "text": "The split between the two families is the whole story. `quantize_dynamic` compresses weights *and* rescales activations per tensor at runtime; `MatMulNBits` compresses only the constant weight operands and leaves activations in float. Weight-only is lossless here -- pAUC marginally above fp32 -- and no dynamic recipe comes close, whatever is done with per-channel scales, reduce_range, or the embedding table.",
+      "n_tokens": 96,
+      "logit": 2.3344645500183105
+    },
+    {
+      "text": "Both are bitwise deterministic on any one machine, which is precisely why this hides. Across instruction sets the weight-only build agrees to 2e-06. The dynamic build does not agree at all: on a container without AVX-512 VNNI its output collapses to roughly -1.07 for every input.",
+      "n_tokens": 68,
+      "logit": 3.899677038192749
+    },
+    {
+      "text": "For a model that ships to browsers on unknown hardware this rules out dynamic quantization by itself, before any accuracy argument. It would have produced garbage for a fraction of users, and nothing in the export path was looking for it. It also means the \"dynamic loses 4-6 points of pAUC\" figures above are the AVX-512 numbers; on AVX2 the loss is total.",
+      "n_tokens": 81,
+      "logit": 3.397744655609131
+    },
+    {
+      "text": "The plan gated on `Spearman >= 0.995`. Only the 270MB build reaches that; the 136.7MB build reaches 0.983 while dropping 0.0008 of pAUC. Rather than relax the number to admit the preferred variant, the gate now measures what Spearman was standing in for:",
+      "n_tokens": 65,
+      "logit": 4.942283630371094
+    },
+    {
+      "text": "Optimum emits a warning that opset 18 is its recommended minimum for ModernBERT. The export succeeds at 17 and parity below is 5e-06, so 17 is kept -- it is what scope.md specifies and it is the more conservative choice for ONNX Runtime Web's WASM kernels.",
+      "n_tokens": 65,
+      "logit": -2.8250741958618164
+    },
+    {
+      "text": "ModernBERT builds its sliding-window attention mask from `torch.arange(seq_len)`, which is a constant-folding candidate under the tracer. Had it folded, the mask would be frozen at the export length and logits would be silently wrong at every *other* length -- a failure a 512-only check cannot see.",
+      "n_tokens": 74,
+      "logit": 1.7778165340423584
+    },
+    {
+      "text": "The node counts matter as an assertion rather than a statistic. There is a known ONNX Runtime regression in which transformer MatMuls silently stop being quantized and the output file comes back the same size as the input, raising nothing. 136 `MatMulInteger` nodes against a floor of 80 is what proves it actually happened.",
+      "n_tokens": 70,
+      "logit": 4.276496410369873
+    },
+    {
+      "text": "Measured with `extension/scripts/bench-ort.mjs`, `onnxruntime-web` 1.29.0, WASM execution provider with SIMD, on an Intel Core Ultra 9 285H (16 cores, 64 GB), Node 24. Median of 3 runs after a warm-up, synthetic token ids at fixed sequence lengths -- cost depends on sequence length, not token identity.",
+      "n_tokens": 84,
+      "logit": -0.6115225553512573
+    },
+    {
+      "text": "So in a WASM build `MlasIsQNBitGemmAvailable()` returns false (`mlas/lib/qnbitgemm.cpp:122`), `PrePack` returns early without packing, and every one of the artifact's 89 `MatMulNBits` nodes falls through to `MatMulNBits<float>::ComputeBUnpacked` (`contrib_ops/cpu/quantization/matmul_nbits.cc:1192`). That path allocates `K x N` floats, dequantizes the entire weight matrix, transposes it into a second `K x N` buffer, and runs a plain SGEMM -- per node, per forward pass.",
+      "n_tokens": 150,
+      "logit": 3.022101879119873
+    },
+    {
+      "text": "Resident set is 553-657 MB across *every* configuration measured, `MatMulInteger` included. It tracks the ORT WASM heap for a ~150 MB model, not the dequantize fallback, so it is not an argument for changing recipe. It is roughly 2x the ~250 MB scope.md 10 projects, and it is resident in the Chrome offscreen document or the Firefox event page for as long as the session lives.",
+      "n_tokens": 96,
+      "logit": 3.665942907333374
+    },
+    {
+      "text": "No dynamic recipe comes within 4x of the accuracy gate, and `export-r1.md` separately disqualifies the whole family for non-portability across instruction sets. Trading four points of pAUC for 2x latency is not a trade this project makes -- scope.md 1 puts false flags on human text first. **The 2x is accepted and mitigated in the extension instead.**",
+      "n_tokens": 82,
+      "logit": 3.048647880554199
+    },
+    {
+      "text": "Mitigations, in scope.md 10's own order of effect: viewport-first queue so on-screen text scores first, the content-keyed score cache so syndicated and revisited text is scored once, and capping `max_length`. Note the third knob is weaker than it looks here: the median chunk is 215 tokens, so a 256 cap only trims the tail.",
+      "n_tokens": 84,
+      "logit": 2.0344183444976807
+    },
+    {
+      "text": "The ~150 MB the spec quotes is only reachable with the embedding `Gather` included, so that is what `export/onnx_export.py` requests. It is the riskiest step in the pipeline for a detector whose signal is lexical, so it is gated on a measured accuracy delta rather than assumed safe.",
+      "n_tokens": 71,
+      "logit": 1.276155948638916
+    },
+    {
+      "text": "Test scores slightly *above* val, which is the expected direction only because nothing distinguishes the two: `held_out_domains_per_genre` is configured at 10 and enforced nowhere, so no domains are reserved test-only and the test split does not currently measure host-template memorization. Treat test here as a second val.",
+      "n_tokens": 72,
+      "logit": 3.165003538131714
+    },
+    {
+      "text": "An earlier version of this file reported AUROC 0.9928 / pAUC 0.9632 / FPR@90 0.0014 under the heading \"Validation results\". Those came from `evaluate()`, which defaulted to 40 batches against an unshuffled loader -- the same ~1,280 windows in `doc_id` order on every call, 3.5% of val, selected by filename. The checkpoint was selected on that slice too.",
+      "n_tokens": 96,
+      "logit": 2.2966506481170654
+    },
+    {
+      "text": "The slice turned out to be close to unbiased: its genre mix tracks the split's, and its AUROC of 0.9946 sits near the full split's 0.9924. So the defect cost accuracy of reporting rather than accuracy of the model, and the headline numbers above are within 0.001 of what was originally claimed. It was still a measurement of the wrong object, and it is fixed: `cfg.eval_windows` now draws a fixed random subsample.",
+      "n_tokens": 101,
+      "logit": 3.5618715286254883
+    },
+    {
+      "text": "0.072 against a floor of zero. This is the number to read rather than raw loss -- soft-target BCE has a floor equal to the mean target entropy, so with mixed-authorship rows the raw loss plateaus well above zero and never approaches it, which looks identical to a broken run.",
+      "n_tokens": 64,
+      "logit": -1.6487377882003784
+    },
+    {
+      "text": "All well below half. The balanced sampler equalises the rate inside each genre to 0.50 while leaving genre marginals untouched, so the model does not see these rates. What the sampler cannot fix is a genre with too few distinct minority-class windows to reweight, which is what `check_split_integrity` now asserts.",
+      "n_tokens": 73,
+      "logit": 3.67573881149292
+    },
+    {
+      "text": "The corpus is also not the one the config describes. `genre_targets` asks for 75k-120k windows per genre and is read by nothing, so academic prose reached 237k against a target of 90k while technical_docs reached 14k against 75k; the genre-share cap was computed against the pre-cap total and so did not bind at the configured 0.25. Both are fixed in code but not in this corpus -- these numbers come from v3 as built.",
+      "n_tokens": 103,
+      "logit": 4.09119987487793
+    },
+    {
+      "text": "Browser extension for Chrome and Firefox, built from one codebase, that visually de-emphasizes page text likely to be AI-generated, using a self-trained ModernBERT-base classifier run in-extension via ONNX Runtime Web. Single release per browser; the only artifact updated after release is the model bundle.",
+      "n_tokens": 69,
+      "logit": -0.893898606300354
+    },
+    {
+      "text": "Documents that are neither pure human nor pure AI carry **character spans** marking the AI-authored regions. Windows recompute their own fraction from those spans (§4.3). The corpus also contains documents at fractions near 0.05, without which §1's non-goal — not flagging lightly AI-edited human prose — is unenforceable rather than merely unmet.",
+      "n_tokens": 80,
+      "logit": 4.301568031311035
+    },
+    {
+      "text": "At ~1.25–1.35 BPE tokens per word, a 400-word window is ~500–540 tokens, so the 512-token limit truncates the longest windows. That is the common case at the top of the range, not an edge case; `n_tokens` and `truncated` are recorded per window.",
+      "n_tokens": 73,
+      "logit": 3.985278367996216
+    },
+    {
+      "text": "Four splits, not three: **train / val / calibration / test**. Calibration selects the threshold; test verifies it. They are disjoint at the group level, and the grouping key is the near-duplicate cluster first and the registered domain second — press releases are syndicated verbatim across dozens of domains, so domain-level grouping alone leaks.",
+      "n_tokens": 74,
+      "logit": 3.936967372894287
+    },
+    {
+      "text": "RAID's rows are whole documents, so the eval runs the full pipeline — chunk → score → §8 aggregation → document score. That is the honest comparison and it is also the only exercise of the aggregation code against text we did not generate.",
+      "n_tokens": 52,
+      "logit": 4.135950565338135
+    },
+    {
+      "text": "RAID's human side overlaps common corpora (Reddit via Webis TL;DR-17, arXiv abstracts, Wikipedia, BBC news), so it is a contamination hazard as well as an eval. Those sources are excluded from the harvest outright, and the remaining corpus is filtered against RAID by near-duplicate and n-gram overlap. The removal count is reported, since that is what makes the external number credible.",
+      "n_tokens": 89,
+      "logit": 3.2590599060058594
+    },
+    {
+      "text": "1. Load checkpoint with `attn_implementation=\"eager\"` (or `sdpa`). The unpadded flash-attention path does not trace. 2. Export via Optimum: opset ≥ 17, dynamic batch and sequence axes, tokenizer `max_length=512`. 3. Verify ONNX logits vs PyTorch on ~200 samples, tolerance ~1e-3, **at several sequence lengths and batch sizes**, not only at 512.",
+      "n_tokens": 101,
+      "logit": 3.3630762100219727
+    },
+    {
+      "text": "ModernBERT builds its sliding-window attention mask from `torch.arange(seq_len)`, which is a strong constant-folding candidate under the tracer. If it folds, the local mask is frozen at the export length and the model returns silently wrong logits at every *other* length — a failure a 512-only parity check cannot see. Fallbacks, in order: export with the dynamo path; patch the mask builder inside the export context; accept a static 512 axis and pad in the extension, which costs roughly 2.3× latency since typical chunks are ~215 tokens. 4. Int8 dynamic quantization (`quantize_dynamic`, **MatMul and the embedding `Gather`**). ~600 MB fp32 → ~150 MB int8.",
+      "n_tokens": 162,
+      "logit": 3.7276482582092285
+    },
+    {
+      "text": "The fp32 figure is right: 149,014,272 params × 4 B = 596 MB. The int8 figure is only reachable if the embedding table is quantized too. ModernBERT's embeddings are 50368 × 768 = 38.7 M params, and they appear in the graph as a `Gather`, not a `MatMul` — quantizing MatMul alone leaves them in fp32 and lands at **266 MB**, not 150 MB. Per-tensor int8 across a 50k-row embedding table is the riskiest step in this pipeline for a detector whose signal is lexical, so it is gated on a measured accuracy delta, with fp16 embeddings (~189 MB) as the fallback if it fails.",
+      "n_tokens": 157,
+      "logit": 3.3478522300720215
+    },
+    {
+      "text": "Assert the result rather than trusting it. There is a known ONNX Runtime regression in which transformer MatMuls silently stop being quantized and the output file comes back the same size as the input, with no error. The build fails if the `MatMulInteger` node count or the output size is outside the expected range. 5. Re-run calibration and per-genre FPR on the int8 model; set `t_on`/temperature from this artifact. 6. Confirm the exported `tokenizer.json` includes the `[CLS]`/`[SEP]` post-processor so browser tokenization matches training.",
+      "n_tokens": 132,
+      "logit": 3.999009609222412
+    },
+    {
+      "text": "Shipped model bundle, exactly six files: `model.onnx` (int8), `tokenizer.json`, `tokenizer_config.json`, `config.json`, `calibration.json`, `SHA256SUMS`. Provenance (run id, git sha, per-genre report, parity report, RAID numbers) is written *beside* the bundle, not inside it — the extension verifies every file in the directory against `SHA256SUMS`.",
+      "n_tokens": 104,
+      "logit": 3.3089637756347656
+    },
+    {
+      "text": "This gate is not one of the coupling points and need not match the training-side detector exactly, but there is an interaction worth watching. franc is weak on short non-native English, and \"unknown → skip\" means the extension may silently never score exactly the prose §4.2 deliberately over-samples as a hard negative — trained on, never scored. `fixtures/langgate.json` asserts both that the two gates agree on acceptance, and, more importantly, that the cases where they disagree are not systematically non-native.",
+      "n_tokens": 112,
+      "logit": 3.931046485900879
+    },
+    {
+      "text": "The specified +0.05 in probability space is unsafe. A ≤1% FPR operating point puts `t_on` around 0.95–0.99, where +0.05 yields a threshold above 1.0: every sparse document silently becomes unflaggable, with no error anywhere. In log-odds the bump is scale-free and cannot leave the unit interval. - **Hysteresis**: a run opens at a chunk ≥ `t_on` and extends over neighbours ≥ `t_off`. This is *spatial*, not temporal — there is no state carried between scoring passes, so re-scoring a page after a DOM mutation always yields the same result.",
+      "n_tokens": 145,
+      "logit": 3.220642566680908
+    },
+    {
+      "text": "1.5M training windows, class-balanced at 750k human and 750k AI, from ~300k human documents and ~250k AI rows. **Windows are the binding quota, not documents**: four of the eight genres are intrinsically short-form, so real documents yield ~3 windows each rather than the 5 a naive count assumes.",
+      "n_tokens": 72,
+      "logit": 3.871994972229004
+    },
+    {
+      "text": "A battery of deliberately weak baselines runs on the finished corpus and **must pass before any training run starts**. It uses pass *bands*, not ceilings: a bag-of-words model at 0.99 AUC means the corpus is trivially separable and the real number will not survive contact with the web, but the same model at 0.55 also means something is wrong, because AI text genuinely does carry lexical signatures and destroying them means the two classes were preprocessed differently.",
+      "n_tokens": 100,
+      "logit": 3.5690059661865234
+    },
+    {
+      "text": "The sharpest single check is transfer to held-out generators. The generation harness is shared across every model; a model's writing style is not. If a bag-of-words probe transfers to unseen generators as well as it does in-distribution, it has learned our pipeline rather than AI writing.",
+      "n_tokens": 63,
+      "logit": 4.463626861572266
+    },
+    {
+      "text": "training/ Python. Everything that produces a model bundle. configs/ corpus / train / export / eval configs (yaml, checked in) src/slopmarker/ corpus/ human harvest, AI generation, attack variants, mixed authorship (§4.2) data/ datasets, windowing (§4.3), genre labels, collators model/ backbone + AI-fraction head + auxiliary genre head (§4.4) export/ ONNX export, int8 quantization, PyTorch-parity check (§5) eval/ per-genre FPR, calibration/threshold selection (§4.5), RAID (§4.6) scripts/ thin CLI entry points tests/",
+      "n_tokens": 143,
+      "logit": -1.977151870727539
+    },
+    {
+      "text": "extension/ TypeScript. One source tree, two builds (§13). src/ content/ extraction, language gate, segmentation, hashing, rendering (§7, §9) router/ chrome.ts (MV3 service worker) / firefox.ts (event page) — the only browser-specific runtime code (§6.2) host/ host.html + host.js: score cache, priority queue, worker mgmt (§6.3) worker/ ORT Web session, single dedicated Web Worker shared/ scoring & aggregation (§8), text normalization + hashing (§7.4), port protocol types, calibration loader pages/ options page, first-run page (§6.5) assets/ manifest source, bundled tokenizer, icons scripts/ build: per-browser manifest post-processing, ORT wasm copy, packaging tests/ unit e2e/ browser-driven parity checks",
+      "n_tokens": 184,
+      "logit": 1.9454885721206665
+    },
+    {
+      "text": "The model never enters git. `data/`, `artifacts/` and `model-host/` are ignored except their READMEs, and `*.onnx` / `*.safetensors` / checkpoints are ignored everywhere. The shipped model bundle (§5) lives on a static host and is fetched at first run (§6.4).",
+      "n_tokens": 77,
+      "logit": -0.9131975173950195
+    },
+    {
+      "text": "Two small files from each bundle release *are* tracked, inside `extension/src/assets/`: the tokenizer (§6.3 bundles it in the extension so browser tokenization can't drift) and `calibration.json` + `SHA256SUMS` (the extension verifies downloads against them). They are copied in from a bundle release by a `tools/` script, not hand-edited.",
+      "n_tokens": 87,
+      "logit": 1.225757360458374
+    },
+    {
+      "text": "1. **Calibration constants.** `temperature`, `t_on`, `t_off`, `min_words` are produced by `training/` on the *quantized* artifact (§5.5) and consumed by the extension. Single source: `calibration.json`. No constant is retyped in TypeScript. 2. **Text handling parity.** `normalize()` + hashing (§7.4) and window/chunk boundaries (§4.3, §7.3) exist in Python and TypeScript. Fixtures in `fixtures/` pin the expected output of both; both test suites read the same files. 3. **Model version string.** Lives in `calibration.json`, keys the score cache (§11), and invalidates old scores on both browsers when the model is refreshed (§4.7).",
+      "n_tokens": 176,
+      "logit": 3.3421847820281982
+    },
+    {
+      "text": "The report’s findings — released Tuesday — said the “unprecedented” growth would continue. Analysts weren’t convinced… and said so.",
+      "n_tokens": 32,
+      "logit": -3.52787709236145
+    },
+    {
+      "text": "Señor García’s café résumé naïve façade — accented text should tokenize identically on both sides of this fence.",
+      "n_tokens": 30,
+      "logit": -0.6554979681968689
+    },
+    {
+      "text": "Prices fell 3.14% in Q2. Dr. Smith of St. Louis said e.g. the U.S. market vs. the U.K. market showed no Ph.D.-level divergence. He was right.",
+      "n_tokens": 52,
+      "logit": -3.019428253173828
+    }
+  ]
+}
