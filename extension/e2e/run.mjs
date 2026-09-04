@@ -34,6 +34,14 @@ const value = (n, d) => {
 const headed = flag("headed");
 const verbose = flag("verbose");
 const keep = flag("keep");
+/**
+ * Fetch the bundle from the real release host instead of a local stand-in. This is the
+ * only way to test the COEP interaction for real: GitHub release assets carry no
+ * Access-Control-Allow-Origin, which is precisely why the download runs in the service
+ * worker rather than the cross-origin-isolated offscreen document. A local server sending
+ * `access-control-allow-origin: *` would let a regression through unnoticed.
+ */
+const realHost = flag("real-host");
 const dist = join(root, "dist", value("browser", "chrome"));
 
 const calibration = JSON.parse(readFileSync(join(dist, "assets", "calibration.json"), "utf-8"));
@@ -151,12 +159,12 @@ async function main() {
   const { chromium } = await import("playwright");
   const { html, flaggedName, cleanName } = buildPage();
 
-  const bundleServer = await serveBundle(8787);
+  const bundleServer = realHost ? null : await serveBundle(8787);
   const pageServer = await servePage(8788, html);
   const profile = await mkdtemp(join(tmpdir(), "slop-marker-e2e-"));
 
   console.log(`extension  ${dist}`);
-  console.log(`model      ${VERSION} from http://127.0.0.1:8787`);
+  console.log(`model      ${VERSION} from ${realHost ? "the real release host" : "http://127.0.0.1:8787"}`);
   console.log(`page       flagged=${flaggedName} clean=${cleanName}\n`);
 
   const context = await chromium.launchPersistentContext(profile, {
@@ -387,7 +395,7 @@ async function main() {
     }
   } finally {
     await context.close();
-    bundleServer.close();
+    bundleServer?.close();
     pageServer.close();
     if (!keep) await rm(profile, { recursive: true, force: true }).catch(() => undefined);
   }

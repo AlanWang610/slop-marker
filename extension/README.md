@@ -13,6 +13,10 @@ npm run lint
 npm run e2e              # builds, then drives a real Chromium
 npm run e2e:firefox      # builds, then drives a real Firefox (geckodriver)
 npm run e2e:all          # both
+
+# variants
+node e2e/run.mjs --headed        # uses the real offscreen document (headless cannot)
+node e2e/run.mjs --real-host     # fetches the bundle from the published release
 ```
 
 `npm test` and `npm run e2e` both need a local model bundle:
@@ -119,9 +123,21 @@ The manifest declares `data_collection_permissions: { required: ["none"] }`, whi
 requires and which is simply accurate: all inference is on-device and nothing is persisted
 beyond the local caches (§1, §11).
 
+## Verified
+
+| | |
+|---|---|
+| unit + cross-language parity | 240 tests |
+| Chrome, headless (host as a tab) | 12/12 |
+| Chrome, headed (real offscreen document) | 11/11 |
+| Firefox (geckodriver, real UI) | 10/10 |
+| against the published release host | Chrome 12/12, Firefox 10/10 |
+| `web-ext lint` | 0 errors |
+
+`--real-host` is not a formality: GitHub release assets carry no
+`Access-Control-Allow-Origin`, which is the entire reason the download runs in the service
+worker rather than the cross-origin-isolated offscreen document. A local test server sending
+`access-control-allow-origin: *` would let that regression through unnoticed.
+
 ## Known gaps
 
-- **The bundle is not published yet.** `bundle-config.ts` points at
-  `https://github.com/AlanWang610/slop-marker/releases/download`, which is correct but has
-  no release on it, so a first run would 404. `tools/publish_bundle.py` is ready and dry-runs
-  clean; it needs `--yes`, which creates a **public** release.

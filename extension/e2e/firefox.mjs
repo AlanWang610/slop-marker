@@ -39,6 +39,8 @@ const repo = resolve(root, "..");
 const flag = (n) => argv.some((a) => a === `--${n}` || a.startsWith(`--${n}=`));
 const headed = flag("headed");
 const verbose = flag("verbose");
+/** Fetch the bundle from the real release host instead of a local stand-in. */
+const realHost = flag("real-host");
 
 const dist = join(root, "dist", "firefox");
 const calibration = JSON.parse(readFileSync(join(dist, "assets", "calibration.json"), "utf-8"));
@@ -153,12 +155,12 @@ async function main() {
   const geckodriver = await import("geckodriver");
 
   const { html, flaggedName, cleanName } = buildPage();
-  const bundleServer = await serveBundle(8787);
+  const bundleServer = realHost ? null : await serveBundle(8787);
   const pageServer = await servePage(8788, html);
   const profile = await mkdtemp(join(tmpdir(), "slop-marker-ff-"));
 
   console.log(`extension  ${dist}`);
-  console.log(`model      ${VERSION} from http://127.0.0.1:8787`);
+  console.log(`model      ${VERSION} from ${realHost ? "the real release host" : "http://127.0.0.1:8787"}`);
   console.log(`page       flagged=${flaggedName} clean=${cleanName}\n`);
 
   // start() resolves to the child process; the module exposes no stop().
@@ -291,7 +293,7 @@ async function main() {
   } finally {
     await driver.quit().catch(() => undefined);
     gecko?.kill?.();
-    bundleServer.close();
+    bundleServer?.close();
     pageServer.close();
     await rm(profile, { recursive: true, force: true }).catch(() => undefined);
   }
