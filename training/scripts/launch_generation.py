@@ -64,8 +64,8 @@ def status() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--shards", type=int, default=24)
-    parser.add_argument("--per-shard", type=int, default=5000)
+    parser.add_argument("--shards", type=int, default=120)
+    parser.add_argument("--per-shard", type=int, default=600)
     parser.add_argument("--workers", type=int, default=24)
     parser.add_argument("--status", action="store_true")
     args = parser.parse_args()

@@ -150,8 +150,13 @@ def harvest_shard(
     secrets=[*llm_secrets, hf_secret],
     cpu=2.0,
     memory=8192,
-    timeout=6 * 3600,
-    retries=modal.Retries(max_retries=2, backoff_coefficient=2.0),
+    # Shards are deliberately small. Measured throughput is ~100 documents per minute
+    # per container, so a 5000-document shard runs for the better part of an hour --
+    # long enough that Modal preemption restarts it from zero and it never finishes.
+    # A few hundred documents completes well inside a preemption window.
+    timeout=3600,
+    retries=modal.Retries(max_retries=3, backoff_coefficient=2.0),
+    max_containers=26,  # keeps provider rate limits from collapsing throughput
 )
 def generate_shard(
     shard_index: int, num_shards: int, per_shard: int, workers: int = 24
