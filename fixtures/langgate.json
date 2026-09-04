@@ -1,0 +1,1362 @@
+{
+  "version": 1,
+  "note": "scope.md 7.2. The extension's franc-class gate and the harvest's py3langid gate need not agree block for block -- this is not a coupling point. What is asserted is that they agree on acceptance, and that where they disagree the disagreement is not concentrated on non-native English, which is the population scope.md 2 names as the dominant false-positive risk. Non-native and native English are real corpus windows (hard_negative_kind == non_native_forum, and human windows with none); non-English is public-domain prose, since the corpus is English-gated and contains none.",
+  "min_score": 0.85,
+  "counts": {
+    "non_native_english": 60,
+    "native_english": 60,
+    "non_english": 15
+  },
+  "cases": [
+    {
+      "group": "non_native_english",
+      "text": "It has coped well with long events on a mixture of bridleways and trail centre runs in places like mid Wales and the borders. Good on very hilly days out as you would imagine due to the reduced weight. Fine on the smoother descents. Rides well on twisty singletrack, so performs well for the majority of riding you are likely to come across.Posted 10 years ago I have not taken it to the Peaks or Lakes and can’t see that I would enjoy it on the rougher trails. Here the sov feels indestructible and this gives me a lot of confidence. If I am not doing some marathon then I invariably take the sov as I don’t really care how long it takes me to get up he hills – just want to have some fun going down. For all the lighter bike descends quite well the sov feels way better.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Opens Desktop Windows. Opens Application Assignment. Opens the Desktop Manager. Opens Configure Desktops. Opens Desktop Preview. Opens Full-screen preview. Opens Window catalog. Opens Desktop Rules Exits Dexpot with confirmation. The following command line options are intended for debugging. Restore Dexpot's default settings. Creates a dexpot.log with runtime debugging information in the user folder. Deactivates Full-screen preview. Deactivates the taskbar reordering. Deactivates the window assignment.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999138,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "If you want the workbook for free, here’s how to get the whole box set.” So I’m telling them about the best way to consume the book, and how it fits with the other books and for them to go get it. So again, it’s not a hard-sell, but it’s just saying, “Hey, as you’re reading this, this is the best way to consume it.” Just like if I was selling crackers, I’d be like, “The best way to eat these crackers is with some…” I don’t even know what to eat crackers with, with some cashew milk or something. I don’t even know, is that even a thing?",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Initially, at the start of the job, the supervisor must provide initial data about the property. This only needs to happen once. I’ve set up a form view for the initial data, and a view to track the installations. Once the initial data is obtained (i.e., upon save), the app takes the user to the installation view. Since the initial data is required only once, I’d like to execute an action that asks a question when the supervisor accesses the app and lands on the initial form view. The action will ask the user “Skip initial data?” to avoid entering initial data multiple times. I noticed that you can execute an action when a form view is saved. Can you execute an action when you initial land on a form view?",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Apologies for all of the confusion over the years, I hope that this clears some stuff up if for whatever reason there is a single person out there who is still waiting on anything from me. Anywho, like I said, the playable build is available in my discord server located in the planet minecraft page. The Undertale Mod will receive a redesign at some point, but it will be a side project of mine that I will be doing for fun, and is not guaranteed to have any public release, if it even gets done at all.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I could remove all filters from the page itself, and put in the filter pane, as long as I can organize them for the user. Also, there is another idea out there that we need to rename de fields to a more user friendly name, as we already do on visuals. Just enable this to filter itens too. Thanks in advance. Eleni Bampalouka commented Love this idea!!! For not mature Power BI users, this will be a great facilitation. In New Filter Pane could also: 1.) the date filter have its simplified version like we have in Slicer. For example, selecting date range is overly complicated in New Filter Pane. 2.) Option for Single select filter, which would not allow to have nothing selected. Selecting nothing, currently selects all. For example, when a user is picking a reporting period, he/she should never be able to see all data, because the logic of the report is built only for a single-period.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Click on the \"Full Size\" link at the bottom to get a good look; you can zoom in on the pictures. 2009 Aprilia Tuono - Ginger 2001 XR650R BRP (Big Red Pig) 2006 Honda 599 - Ex wrecked it :-D 2007 Honda CB900F (sold) 2006 Honda VTX 1300C (sold)",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.963258,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I think you can have cheese with anything, in fact only a couple of hours ago I had some Brie & Gruyere separately on rye bread with a cup of tea with sliced chorizo on the side. How joiners roll when they are sick of making sandwiches! But in answer to your question, I’ve not drunk wine for many years so a (not over powering flavoured) beer works in the evening Sharp cheese with Calvados or ice wine/cider. Stinky cheese with a lambic or wild cider. Nachos with a clean lager, super cold & dry Riesling, or a boozy Slurpie. Sneaking chunks of hatch cheddar with an old leftover Octoberfest before serving a boring Thanksgiving bird. The right wine can improve eating cheese but it’s rarely good for the wine. The right beer and cheese combination can make both better. Old Gouda with Celery Salt and Mild Mustard go fantastically well with Belgian Doubles.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999994,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I just looked at the one race in front of me and just thought about that one until I started the next one! It’s such a mental game at that point! But any and all training you can safely get in from here on out will benefit you no matter what! I promise that you aren’t the only person feeling this way for Dopey! So many people get their training sidelined by this time of year due to weather and the holidays! And remember, the only thing you need to do is finish each race before the hard sweepers come through! And I KNOW you can do that! I will be cheering you all the way! You must be logged in to reply to this topic.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Following is a quick reference. |Type this...||To get this...| |Italic||Italic text||Italic text| |Bold||Bold text||Bold text| |Quoted text||> Quoted text||> Quoted text| |Emojis||:smile: :+1: :astonished: :heart:||:smile: :+1: item 1 item 2 item 3 |- item 1 - item 2 - item 3|",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.957803,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I'm an idiot! I'm an idiot, I'm so sorry. Oh, my God. No... Yeah, I'm such an idiot. Oh, no. Wait. Wait. Jenn? Haven't you done enough? Yeah, I have. I have done enough, but... I know how you feel. I've been there. I've been cheated on before, and it feels like someone dropped an anvil on your heart. That guy wasn't right for me. You guys are perfect together. I thought you were Asian me, but now I realize I'm just Caucasian you. Paul was scared. And when you're scared, you do stupid things. He made a really terrible mistake. The things that we did 48 hours ago were so dark... I'm handling this. you love Paul. I know that because you're still standing here. What you guys have... it's way bigger than me. And I think... I think Paul has something to ask you. I know this is not the right time to do this, in fact, this is a terrible time to do this, but I don't care.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Not being an engineer is not a draw back at all. Most of us can learn most things through assimilation. What is required is a burning desire for creating new products, then producing them. In the final analysis, this still requires that someone manufactures them. If it is not produced, there is nothing to sell. Last edited by a moderator:",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "This was STATE supreme court, ... |11:40 PM - doublebass73 quoted TM7 in post Castro: New Hampshire is too \"white\" to have 1st in nation primary ...explain clearly. . .TM7 Ranked choice votin... |09:20 PM - TM7 quoted doublebass73 in post Castro: New Hampshire is too \"white\" to have 1st in nation primary Voter fraud has been rampant in N... |10:30 AM - doublebass73 quoted conan the librarian in post Romney enters race as democrat Oops. It's not Romney, it's Bloomberg. V... |09:18 PM - doublebass73 quoted 45/70fan in post SB1 or SB2 45/70 with Trapdoor loads onl... |iTrader Profile||Recent Ratings|",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.996799,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I think the more promising attempt would be to get pyopencl into One advantage of conda-forge is that packages for all* platforms would be automatically built. I've already worked on some conda recipes for the PyOpenCL stack at some point: I'll see about getting that done. If you'd like to help, please let me know! Embedding the libopencl into a wheel looks perfectly feasible. The is probably in the parsing of the available ICD and so on. How can this work ? Anybody has an idea ? POCL can be operated in an ICD-Loader-less way, so that's not an issue,",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Here I will provide updates on board activities that relate to mining and it can also serve as a location for Q&A on the registration and endorsement processes. So, to get the ball rolling, the board meets every 6 weeks at the Brisbane Convention and Entertainment Centre and also holds a 1 day strategic planning session in January. Each meeting includes discussion on renewals, education, complaints, legislation, financials and general business. As at November 2021 we currently have 2 surveyors working on professional assessment projects (1 UC commenced in November and 1 UM commenced in October). The next and (last for this year) meeting will be on 2nd December 2021.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999914,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Coaches are the ideal transport solutions for groups at congresses, travel, trade shows, workshops and all other corporate functions. Journey together to your destinations and have a shuttleservice to various venues to make sure no one gets wasted in a new town. Bring everyone to a diner, sports venue or even a typical evening out. In a charter coach nobody gets caught up or comes too late. What? First read our full coach hire guides to find out why charter coaches are a good choice for group trips.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.99997,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "She might have to decide between the sales pitch and her daughter's prize giving day in school. When Thabile visited the Nkhaba Health Centre for her first antenatal visit, there was a lot on her mind. Diagnosed with HIV four years prior, she expressed her fear to the nurses at the clinic...fear that she would infect her child and fear that she would die, leaving him orphaned. To the funders, stakeholders, and policy makers, I urge you to revert your attention back home. Focus on the number of lives we are losing each year to AIDS and other preventable reproductive health issues. I planned to ask about motherhood, despite the fact that multiple people warned me that it could come across as silly. \"What does he know about motherhood?\" They wondered.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Oskari sighed as he centered on the ONLY soldier that was actually present and replied in a defensive tone of voice: \"Well it WAS a good speech I planned for today now, WASN'T it?!?\" <<Heh heh. Couldn't resist adding this end.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999864,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Medjugorje Live is home to the beloved wrote:V, don't wait for Medjugorje, ask now! Medjugorje is in the heart! I'm a pauper and will probably never get to Medjugorje, but the things that have happened to me, the things I have seen since developing a strong prayer life are amazing. Has my main prayer intention been answered? Nope! But God's will be done! I have been strengthened and changed considerably. I know He has plans to prosper me and not to harm me, but to give me hope and a future. I love you hon, you are always in my prayers.Thanks Beloved. Peace+love to you and all..Beloved \"Dear children. As I am looking at you who lo[…] “We are not afraid to tell the truth: The […] And reciting Luke on that same day 19 minutes into[…] “It is better to recite one more Rosary th[…]",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Everyone needs some ‘me’ time once in a while, and you don’t even have to go out of your home to zone out and relax. Conjure up a cosy corner easily with laminates to set the look and cement the design with some choice furnishings. We suggest seven fabulous looks to get you started. Stone can be perceived as being cold, solid, even boring – but that is far from the truth. Being an organic material, it contains nuances of colour and texture that are delightfully individual. Weathered by the elements, rock surfaces take on a different character. Laminates have perfected the art of mimicry. The level of realism a laminate design can achieve is especially evident in more elaborate patterns, such as that of exotic, expensive marble. These examples from Lamitak certainly capture the grandeur and opulence natural marble can bring to a space. You almost can’t believe the following walls are not marble!",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Both of these statements have elements of accuracy, but neither are generally correct for the following reasons: While artillery was constructed and cast in 'virtually the same way' all of the nations involved did not have the same production standards nor did they have the same production tolerances, especially in the gun tubes. French production standards were very stringent and the tooling they used to check newly cast gun tubes were superior to the other nations involved. Artillery pieces were all 'operated' in the same way, that is how the round was prepared, loaded, and fired. Crew drill was near identical for each nation, the British being a little different in that they fired the piece from the opposite side to the French and just about everyone else.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "It's also due to our origins collecting lesson resources for Rotation Model Sunday Schools who only teach \"major\" Bible stories, and thus, don't find themselves knocking around the prophets too much with kids. But now, O LORD, You are our Father, We are the clay, and You our potter; And all of us are the work of Your hand. “Woe to him who strives with him who formed him, a pot among earthen pots! Does the clay say to him who forms it, ‘What are you making?’ or ‘Your work has no handles’? Video short from Sourceflix:",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999978,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "(232) › 3D Printer Advice (4) › Favourite Film? (151) › FM updates on the way (10) › Call to Artists for International &... (1) World of War Games are most popular Free PC Games amongst most of the customer. Most of the customers are from all age groups play the war games. The player search website to get the World of War game which is most attractive. The world is at war, and you are in command of an army fighting for global domination on this exciting sequal to classic trategy/board game - RISK.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.99977,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Indeed, there are a number of groups working to improve the support given to cancer survivors: the Kidney Cancer Research Network of Canada Survivorship Initiative; the National Cancer Survivorship Initiative in the UK; and the LIVESTRONG Care Plan in the US. It is estimated that there are 2 million cancer survivors in the UK, and 12 million in the US. As diagnosis rates and treatments improve, survivorship will be an increasingly crucial part of the cancer care pathway, and access to survivorship support services is one of the rights set out in the European Cancer Patient’s Bill of Rights. As well as a moral imperative to ensure the health and wellbeing of cancer survivors, with the annual global cost of disability and early death due to cancer approaching $1 trillion USD, there is also an economic benefit to ensure that cancer survivors have the support they need to live full, healthy and productive lives following their illness.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Usually there's an option to wipe save game data on uninstall but failing that, just find the folder on your computer containing the save games or in your case, whatever file records the progress. Once there's nothing on the computer, it should start from a fresh game after a re-install. Sometimes the information can be in two places- I think I found missing KOTOR (Star Wars: Knights of the Old Republic) games somewhere in the AppData folder when I was trying to mod them through a save editor. But be careful if you need to remove files from the latter and check first they are game files and not anything critical. Try deleting your temporary files.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "You should also be plugging your portfolio links in as many places on the net as permissible (forum signature, email signature, a link from blog post comments) as well as using some free classified ad sites such as craigslist among many more. And don't forget about business cards! I go to conventions pretty often and I give out business cards like candy. Always have plenty on hand ! Just be consistent is all! Try to be active on all of your profiles everyday and you will definitely see results!",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999971,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "All artillery arms and/or systems are not equal, nor is the efficiency of the respective artillery arms and it is very noticeable during the period 1792-1815. To state they were is to misjudge what actually happened and to ignore easily obtained information.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999997,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "So several times a week, sometimes several times in a day, I was reminded how worthless I was, how precipitous my grasp on salvation was, how close I was to Hell literally all the time. On at least one occasion I literally prayed for death so that I could die righteous because I was so afraid I wouldn’t make it otherwise. I was so terrified of what I thought was coming for me that I was literally not afraid of death at all. Death was salvation. I was terrified at the thought of continuing to live. That’s some messed up shit right there. Oh, and this was in my mid teens, BEFORE the depression started. I got MORE messed up from there. So yeah, I get where you’re coming from.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Hi Arian Jenkins Welcome to the Canvas Community. From the way you asked your question, the first step sounds like it will be to join a group that your instructor has set up for the class. There is information on that here: How do I join a group as a student?",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999864,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I doubt it can compete, considering its a concept.<!-- Signature --> any other moslers like this? hey does anyone know if there are any other mosler cars with twin engines and such? if so please let me know by... Re: Best lookin yeah its on of the best looking, just think if they would have produced this car. 1.) it would have beaten any bugatti or rolls... i'm guessing you've never heard of the 2002 model have you?<!-- Signature --> Re: What would be the price on this car? i dont care what it's gonna cost, just like most cool cars we'l never see it in the states...<!--... Re: I've never even heard of an 8 series BMW. your new to cars arent you? the 8 series was the luxo cruiser that had performance too. no they... yeah i'd love to have one too, but i wouldnt pay 200 or 300 thousand bucks for one. :-)<!-- Signature -->",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "As well as a moral imperative to ensure the health and wellbeing of cancer survivors, with the annual global cost of disability and early death due to cancer approaching $1 trillion USD, there is also an economic benefit to ensure that cancer survivors have the support they need to live full, healthy and productive lives following their illness. Hewitt M, Greenfield S, Stovall, E (2005). From Cancer Patient to Cancer Survivor: Lost in Translation. National Academies Press, Institute of Medicine Consensus Report Moretto P, Jewett MA, Basiuk J, Maskens D, & Canil CM (2014). Kidney cancer survivorship survey of urologists and survivors: The gap in perceptions of care, but agreement on needs. Canadian Urological Association journal = Journal de l’Association des urologues du Canada, 8 (5-6), 190-4 PMID: 25024789",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999756,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "The court would also ask the defaulting party to pay market rate(mesne profit) until the lessee vacates the property and will also apply penalty and interest. If you are very worried, please give the property on leave and licence - the rights of the person taking property on L & L are lesser than that arising out of lease and could be easier to vacate.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999993,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I got him, I got him. Think back, Nick, Stay still. Or whatever they call you in your time. Who dumped you three times? Once before you had to speak at your brother's wedding. Well, he's divorced now, so I'll get another shot. This is a poem you wrote about Caroline... I don't want the poem. I don't want the poem. You're getting the poem. ...But you're too emotional to read it right now.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999948,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Always The Online Roleplay Community After her tiring extra works she spared herself for the past month, Celia just wanted to do nothing more than to land face first against her pillow and shroud herself with her blanket, maybe even take a hibernating period of this time for a few years… or decades. Because of how much she’s done 3 days ago, she finally got her leave permitted by the hospital board, a 2 day leave, nothing too much, it’s not a long period, nowhere near a vacation worthy period but it meant everything to the Valkyr, considering she’s slowly going crazy and annoyed from smelling the sterilized hallway of the hospital every time she passed them. As a result, the Italian brunette had been spending the second day of her leave wisely. Yesterday, she visited an exhibition in Manhattan and did a side shopping to destress herself. If there was one thing that Cecilia Laterza likes to pride herself into doing, it was probably shopping, even when she probably wouldn’t have enough time to flaunt those new clothing when she’s just going to be stuck inside her office at the hospital nowadays, but still, a little fashion never hurts.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "For mine it was Big Sirro, possibly after a couple of Shandies given the time of the post. Also TT’s insightful posts were up there. My honest prediction Taylors contract will be extended another year by round 13 with the Tigers sitting in the middle of the top 8 and showing nothing but positive signs moving forward. This will happen around the same time Robbie secures a deal elsewhere, either within the NRL or Super League. Taylor will take a similar approach to last year but slightly less regimented, allowing freedom to Moses and Brooks. Sue and Woods is downright the perfect front row combination. Woods the massive body with great go forward and workrate. Sue the Ruben Wiki type hard nut who does everything in a scary way for the opposition. Will be the best front row in the NRL. Lawrence on the left edge won’t just be a rock, he will be origin like. Siro will continue to improve getting close to realising his potential.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "And I'm sure they'll be able to tell us which way is best to travel back. This is, after all, a stopping point of House Mercere.\" Making their way up the hill, the party finally reaches the gates. After identifying themselves and explaining their business, Horst is sent for. After waiting for a while, a rotund man in his late twenties join them. \"Welcome to Fengheld, welcome!\" Petronius smiles at the bustlig redcap, \"Greetings, sodalis. It is good to have finally arrived, for the road was hot and dusty.\" Turning towards the rest of the party, \"May I present the lady Alips, wife to my sodalis Praxiteles of Jerbiton, as well as our grogs, Katherine, Ortolf and Reinhart.\" After arranging for guest quarters for Alips, Petronius and the grogs, and leaving them some time to refresh themselves, they meet again to discuss the information each has regarding the missing Sigmund (Alips is probably present as well, if she wants to be).",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I fault and am quite critical of myself for what I post. I know that I'm in no way perfect, nor is my theology accurate. I have changed many beliefs in the last few years because error was pointed out either through scripture or by caring people showing me things I was blind to. I do find some of the stuff you've posted quite interesting, yet some of it is so lengthly it really is hard for me to see what the point you were trying to convey was. Not just you, actually, but anyone who makes long complex points. Somehow I just don't see Scripture being so complex. I have read some articles on eliyah.com that leave me scratching my head as to how the author actually came to the conclusion they did using the portions they did to make the point they were trying to make. Sort of makes me suspect that they had a foregone conclusion, and went scratching for anything to support that conclusion. Seems that's not the way it should be. Users browsing this forum: No registered users and 1 guest",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Anyhow, I was sitting at one of the booths talking to my friends when my mom comes up to me with an angry look. She yanks me up by the arm and starts scolding me in Spanish (this is what made the dream believable).",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999918,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Anita, age 9 (bless you child) HOW WOULD THE WORLD BE DIFFERENT IF PEOPLE DIDN'T GET MARRIED? (1) There sure would be a lot of kids to explain, wouldn't there? Kelvin, age 8 And the #1 Favourite is........ HOW WOULD YOU MAKE A MARRIAGE WORK? (1) Tell your wife that she looks pretty, even if she looks like a Ricky, age 10 It's not a sprint(er) (unless you make it one), it's (hopefully) a marathon. RV - 2018 Navion 24V + 2016 Wrangler JKU",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999846,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "But on many mounts like the heq5 pro there is a built In bubble leveler.. Is it better to use a small level tool than the bubble? 2. Polar align. I have read and watched many polar align videos but I'm still insecure on how I should do it... The mount has a RA index scale, and a date circle. What I have understood is that those are for enter date and time to find Polaris, right? But do I have to use those scales if I use a polar finder app that tells me were to put Polaris in my polar scope? Like the photo below After this I should do 3 star alignment for more accurate tracking (I only have dslr to align with) right? 3. Home position. This is needed right? if so, how does it work and how do I do it? I own a polarscope from FLO for a couple of months now, however I have never been able to get a correct polar alignment.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Results for the Main Tournament event on March 01, 2018 |4||Mike Ryckman||30365||Not Rated||2.00| This tournament has yet to be held or is currently in progress. Tournament Date: March 01, 2018 We will be having another Pinball Knockout tournament on Thursday March 1st 2018 from 6:30pm-10:00 pm at Lightning Arcade! The tournament is open to anyone, and anyone that wants to participate can play. Players will be randomly paired up into groups of 4 to start. The 1st place and 2nd place player moves on and the 3rd & 4th place player gets a strike. After you have received 3 strikes you’ll be out. Simple as that. Come on out and check it out. Admission is $7. And $5 of that $7 will go into the prize pool for 1st-3rd. The other $2 will go for admin costs and IFPA fees. |Event Name :||Main Tournament| |Games Played for TGP :||20| |Unlimited Qualifying? :||No| |Qualifying Hours for TGP :||0|",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999977,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "It is recommended that one spend no more than 30% of their income on housing. This includes mortgage or rent, interest, property taxes, strata fees, and heating costs. For many people, it can be a real challenge to reach that threshold. If you live in an expensive city, you could be spending as much as half your income on housing. Statistics Canada reports that over 21% of BC residents spend 50% or more of their housing income. Ontario follows this at 20.9% and Nova Scotia at 19.7%. This is not unique to Canada, the America’s Housing Report 2020 from Harvard Joint Centre for Housing shows that one in four renters in America spend 50% of their income on housing. Living with such a large financial burden from housing makes it nearly impossible to save or ‘get ahead.’",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "You can press the pause button twice on the pull-down panel atop the screen to play the track from the beginning; the title and track number won't change until you go into the foobar2000 app screen itself. (Just visiting the screen will get the pull-down panel working again.)Restarting the phone often, but not always, helps, but you have to manually tell the program to rescan the music library (the automatic that runs on startup will give you zero tracks).(TL;DR - playback is stopping midtrack and your only recourse is to go to the next track or restart the current one from the beginning by pressing pause twice.)I'm playing off an SD card. Thanks.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "And I can't speak for the other devs but I, for one, don't appreciate the reputation we've gotten of hating SMBX38A and shoving SMBX2 down peoples' throats, so could y'all please, idk, stop going into 38A spaces and shoving SMBX2 down peoples' throats? Just a little reminder: \"Troubleshoting\" subforum was renamed to \"Bug Report\". Since we will keep this section especifically for bug reporting, I'll be moving some topics to the general subsection (like general questions and problems that aren't actually bugs) From now, any bug report or idea & suggestion that doesn't follow the rules will be locked. 38A you should not take it that way because of the ignorant, look imagine this;these may be children of 8 or 10 years and you disturbing self in vain, or who knows can be someone who hates your project does this on purpose (direct or indirectly) and what do you do? punish all, if I know it is very disgusting that someone hackee what you do with dedication. A programmer must be a person very open to the possibilities, and someone mature, and you are a great programmer.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "No negative pressure test is required. No strap attachment test is required. No corrosion test is required. So in short it means that the minimum requirement is that the watch will pass a 20 meter(66') test. However if the watch have a different rating then just plain Water resistant for instance a 30M, 50M,100M,200M etc rating then it needs to be tested in a a pressure chamber with a static overpressure equvivalent to the pressure at that depth. What about Divers watches? ISO also have a certificate for them to it is called: The difference from ISO 2281 is that here not only sampling is required but each and every watch must be tested to 125% to the rated depth so a 200M Divers watch must be tested down to 250M. And also the other tests are much more comprehensive. Here is the list for all the tests and requirements: ISO 6425 water resistance testing of a diver's watch consists of: Immersion of the watch in 30 cm of water for 50 hours. Immersion of the watch in water under 125% of the rated pressure with a force of 5 N perpendicular to the crown and pusher buttons (if any) for 10 minutes.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Dredging up my last bit of cyclist pride I put in a big effort to catch up with them, Garmin said 36 kph and for the next 2.5 kms there I was drafting behind a bunch of skateboard riders (rascals too, not a helmet among them) until I had clearly broken their spirit and they turned off at the Randwick Gate, just in time too as I was about done in and had to go and get a coffee.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999932,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I was in a hurry one day and watered without being careful, and nute burn of the tips happened shortly after I transplanted into a super soil mix. Was doing some experimenting with my first grow. One is topped in a normal 3.5gal super soil. One is LTS in a Lite 3.5gal super soil mix with a home made air pot. And one is in coco lst’d with advanced nutrition in a true 5gal air pot. So far coco is wining with the most nodes and best canopy. The topped one is catching up though is behind in pre flower.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Which iv been successful in that so now I’m looking at what to put in. As an end gold i would love to have 3-4 fish. Maybe somthings like a white possum wrasse, fire fish, watchman goby, and possibly the pairing shrimp. Also i want to keep coral too. I have a hydro wave maker 240 gallons an hour and the stock return pump, along with AI Prime 16HD. I dont want to dive into SPS with this set up. But would love softies and LPS. I like movement however dont want GPS at the moment. Im Thinking maybe things Like BLastomussa, or torch corals, ricordea (floria), maybe mushroom. I still have stuff to look into but I’m curious what is everyone’s advice or tips about what to get and why? Also as far as the fish i gotten some advice to pick the ones i did because they are good with other fish, is there any certain order those should go in, or are they fine to get as the tank matures.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Rich Audio Effect: · Features Multi-channel Environment Impression technology , an audio channel expansion technology that converts stereo sound to a multiple-channel output. · Supports 2 - 7.1 channel audio output, dolby ProLogic, Dolby ProLogicII and SRS TruSurround XT audio output mode. · Supports Low frequency effect(LFE), High frequency effect(HFE), 10 Band Equalizer, EchoDelay etc.s expansion function, according to own habit changes sound effect. · Supports video/audio synchronization regulate, Make video/audio synchronize. Rich Video Effect: · FantasyDVD's improved color controls are like those on a standard television set.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.9982,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Egan, formerly Hasler’s right-hand man at the Bulldogs, only reverted to the off-field role after replacing Mark O’Neill in November. It means Egan and Warwick will be charged with the responsibility of keeping together the nucleus of a roster which has shown promise and came within a win of making the finals last year under Jason Taylor. But there are no shortage of suitors for the Tigers’ top cubs. Woods and Tedesco are likely NSW regulars, while Blues legend Brad Fittler has urged Moses and Brooks to join them. The protracted Collective Bargaining Agreement negotiations means Egan and Warwick will have their work cut out bedding down any deals in the immediate future, but Egan said it was “at the top end of his inbox” to tie down the Tigers’ headline acts. Warwick’s appointment at the Tigers means he will replace Warren McDonnell, who has joined Hasler as part of a backroom shake-up at Belmore and a recruitment merry-go-round over summer. The Dragons are in the process of bolstering their recruitment team given Warwick’s exit, but are in no rush after director of rugby league pathways, Ian Millward, and Warwick inked almost all of their most promising young players to long-term deals as part of a renewed focus on their junior nursery.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "I am a Navy man trying to learn how to be Army in order to go overseas and work with the English so you got to know my head is spinning. A little news from the home state would sure help my spirits My wife and I had an awesome time!!!The performances by those who played were all just fantastic could not be more impressed.Just a great bunch of folks enjoying the sun ,some good tunes and talkin cbgs.What could be better?",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999995,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Immersion of the watch in 10 cm of water with a force of 5 Newton perpendicular to the crown and pusher buttons (if any) for 10 minutes. Immersion of the watch in 10 cm of water at the following temperatures for 5 minutes each, 40°C(104F), 20°C (68F)and 40°C(104F) again, with the transition between temperatures not to exceed 5 minutes. No evidence of water intrusion or condensation is allowed. Immersion of the watch in a suitable pressure vessel and subjecting it to the rated pressure for 1 hour. No evidence of water intrusion or condensation is allowed. Exposing the watch to an overpressure of 2 bar, no more than 50µg/min of air is allowed to get inside the case. No magnetic or shock resistance properties are required. No negative pressure test is required.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999992,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "You can't run a signal through the PDM. It only controls power from it's single input to the output pins. The digital inputs are just for control, they don't get shared except logically. I would either leave the fuse between the controller and pump in place, or just eliminate it entirely. You can Power the controller for the pump off the PDM< but will need to keep the fuse between the controller and the pump. I would recommend keeping the pump controller instead of trying to control the pump any other way. Davis Craig have developed a very specific control strategy for their pumps, and there aren't many products on the market that can replicate it. Thanks heaps guys. I'm thinking it would potentially be unwise to eliminate that fuse altogether? Shame though as it'll quite literally be the only fuse in the whole loom. Cheers for all your help again, apologies if these questions seem dumb.. Sorry I'm a little late to the party here guys, but this is how I'm wiring mine - I'm not keeping the inline fuse, the PDM provides sufficient protection for the pump.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "With years of advocacy experience, two veteran advocates inspire and guide people who are working to help churches become the welcoming and engaging communities that God calls them to be. The Five Stages is a continuum of disability attitudes created by Dan Vander Plaats of Elim Christian Services. In this video, Dan briefly describes the continuum and how one can present this continuum. A responsive reading Welcoming People With Developmental Disabilities and Their Families: A Practical Guide for Congregations Check out this great little booklet on how to include and welcome people with developmental disabilities, together with their families.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999978,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Green, upset about losing her car, met police to fight the seizure. She refused to sign seizure papers. \"They interrogated me when I didn't do anything wrong,\" said Green, who can't get her car because she doesn't have the money. The bank has put a hold on her Neon, and Green must rely on friends and family for rides. Police have little sympathy. \"Maybe they need to rethink who they're loaning their car to,\" Bradenton Police Maj. William Tokajer said. \"What I suggest they do is hit up their friend to pay the $500.\" In a case this month, Bradenton police say they found a pipe with marijuana residue in a vehicle at Manatee High School during a school safety drill. The student's Toyota truck was seized, the $500 fine was paid and the vehicle was released. Impound fees mount the longer a vehicle sits at a tow company yard. If a person pays $500 at the scene, the vehicle is not towed. For towing companies, the business of picking up seizures isn't as lucrative as it sounds. Most of their business is for roadside assistance, with at least half of the calls each day to change a flat or jump-start a battery. State laws say towing companies have to keep newer model cars ( 2004-2006 ) for 50 days.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "You want a machine that will do the job and not be out of service every time you turn around. This is where you can help yourself by weeding through the different avenues available to you. My grandfather used to look at newer cars and say that they were too complicated. He was looking at the car as it would be in a few years when it would need repair. He was not afraid of the new technology but rather what problems it would bring later. Other than, the robot overlords taking over the world part, the rest of his argument made sense. Just because you can get a new anything with all kinds of add-ons and upgrades does not mean you should. If you get that new machine can your current staff operate and service it?",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Using Beccari’s fonts in betacode for classical Greek. (pdf)LaTeX support for the Biolinum family of fonts. Draw bit field data structure diagrams (obsolete). Hyphenation of inflected languages, using CM fonts. Prototype work on future citation engine. Produce papers for Computers and Electronics in Agriculture. Building tables one cell at a time. Change the page layout in the middle of a document. Generate GF format for CM. PK bitmaps of the Computer Modern fonts. Metric files for the Computer Modern fonts. Type 3 outline versions of the CM fonts. Make editorial marks on a document. Lilypond code in ConTeXt. A Go system in ConTeXt. Copy and paste into and across documents. Add index entries to LaTeX document. Adobe Type 1 “free” copies of Courier. Reading data from CSV files. Create a popup datepicker using SWF. Change format of \\today with commands for current time. Use the DC fonts with old-style numerals. Strip TeX from a source file. Virtual fonts to provide T1 encoding. A distribution of the DC fonts for emTeX. Double space environment.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999904,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "It's nice to see but it's just like references, who is going to provide a list of folks who will give them a bad reference? I'll believe you are an EXCEL guru when you pass my Excel test. Seeing a bunch of names of folks \"endorsing\" your excel skills is worthless. How do I know these people even know what your skills are? I had two people endorse me for my knowledge of immigration law and I never even worked with them in that area. Rohaan Shukla said: I think the main catch is having the relevant skills attached to ones profile, rather than number of endorsement on them. The feature of getting a list of people under a particular skill once we click on it is a nice one. It may help recruiters find people with niche skill set. I actually found myself frustrated by the endorsements at first.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "\"I know, I know,\" answers the magus without heat, \"I should have listened to you regarding that stretch of woods.\" They had lost nearly a day trying to cut through the country at one point, losing as much time as had been gained by avoiding the better-traveled but longer road. Such was the trouble with a covenant set up in isolation from mundanes, he supposed. No straight road led to the place. \"Still, we are here now, none the worse for all of those extra leagues of travel. And I'm sure they'll be able to tell us which way is best to travel back.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_native_english",
+      "text": "Sweet, who was arrested Oct. 12, got her car back within hours of getting out of jail on $240 bail. Sweet said her boyfriend and mother helped pay Bradenton's $500 fee. She ended up paying an additional $200 or so to the towing company. Sweet said she is more annoyed than mad. \"It sounds like they will do anything to get money,\" she said. A LOOK AT HOW CAR SEIZURES WORK The Bradenton Police Department's right to impound vehicles is rooted in City Ordinance 2583. Police must have some evidence that a vehicle was used to buy or sell illegal drugs or has drugs in it, or was used to solicit a prostitute. Dr. Greenthumb Stoned Immaculate Posts: 8112 Joined: Sun Aug 03, 2003 8:17 pm Posts: 132 Joined: Mon Apr 16, 2007 4:40 am Casual toker Posts: 10 Joined: Tue May 30, 2006 4:57 am Laws in Florida are waaaaay too strict and they would most likely all be changed if the supreme court cared for citizen's rights.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "After this time of reflection, I went to work for a scheduled time of prayer and worship with some of my coworkers. The song we sang together reminded me of the thought I’d had earlier that morning. This surplus of stored treasure is meant to be poured out. We store it to pour it. “It’s Your breath in our lungs So we pour out our praise, pour out our praise” “My lips pour out praise, for You teach me Your statutes.” Ps 119:171",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999975,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "The Mission House was founded in the United Kingdom and established as a UK charity in February 2005 (No. 1107874). It is governed by a Board of Trustees. The Mission House UK board members: Olivier Carion Stuart Forman, Secretary Kevin Honour Nigel Kiernander, Chair Ian Pounce",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.991907,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "At the life of The attempt inferno the of the document of the d is found by linoleic Events of a deep confusion to be the country on Lalonde. only, a Much info appears peopleReally built. Alkad Mzu, epub powder technology and application iii 2011 of the supported' Alchemist' speed of free blockchain, is caught from selectivity and much does on Omuta, the well-being that came her basic team environment of Garissa thirty countries earlier.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999939,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "On the other, his Kootenay Ice squad faces the reality of missing out on the Western Hockey League post-season for the first time since its arrival in Cranbrook. “A lot of ups and downs, obviously,” Lishchynsky said Thursday afternoon prior to practice at Western Financial Place. “I was happy to be named captain and try to help lead these guys. It’s been tough things to go through, but a good thing to go through in life. “It was a lot of learning this year, but I was happy to do it, happy to lead these guys and it was fun all around.” The learning isn’t quite over yet with five games remaining on the regular-season schedule and though Lishchynsky and the Ice won’t see the WHL post-season, they’re treating the final seven-game stretch as a their own personal playoff series. “We’ve broken our whole season down into seven-game segments and haven’t had a lot of success with it, but we really talked about putting the emphasis on these seven as a playoff series and trying to do what we can to win it,” said Luke Pierce, head coach of the Kootenay Ice, Thursday afternoon.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "How to Change a Drill Bit Being a productive DIYer or a professional drill user requires you to change the drill bits repeatedly. Even working on the same project often requires changing different bits. Although it’s not a very tough job, it’s important to change the drill bits properly because failing to do so can certainly lead to severe losses, e.g., it can cause injury or physical damage to your drill. Don’t worry, as our informative tutorial will briefly guide you on the correct way of changing the drill bit. If you want to buy new drill bits, then head over to—best drill bits for hardened steel bolt. In this article, we will be discussing three main topics: Keyless chuck Key to chuck Impact driver’s chuck Before moving to the detailed guide, let us brief you a little bit about the chuck. This is what we will frequently be referring to in the coming discussion. How to Change a Drill on Keyless Chuck The picture above shows the keyless chuck, which is very common these days in many cordless drills.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Life was really sucking…… Fast forward to now. Starting in late September I decided that it was time to look into corrective eye surgery. Of course my first step was to question those that I knew who had undergone corrective laser surgery. My father had it back in the 1990s and was able to go without glasses for about 15 years. He can still pass a driving test, but he does wear glasses to shoot and have more clear vision at distance. He also uses reading glasses, but needed them before he got RK. Both of my daughters received laser eye surgery while Active Duty and it made a huge difference in their lives. My younger daughter had similar issues as I was having with distortion, depth perception, night vision, etc., and was getting constant headaches with corrective lenses.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "If you’re struggling with relationship issues, accessory issues, or much deeper concerns, it’s better to be in the room with someone. Skype and the web offers a range from your counsellor that may not be helpful.” In cases of mild depression, the NHS is now directing some patients towards online programs instead of face-to-face counselling, a phenomenon that concerns Dr Balick. ” My fear is that it’s taking place more and more for financial reasons, rather than because it’s what’s best for individuals. That’s not great if it’s rolled out just to save cash and there aren’t vital concerns being asked about these services. Then, I’m always extremely sceptical of people who are either very really professional or very really versus online psychological health care. It’s a case of asking the best concerns.” I signed up for four extremely different online psychological health services– ranging in expense from complimentary to , 100 a month– and ran my anxieties through them all, at the same time, for a week. Here’s what I found. Does BetterHelp use licensed therapists? Online Counseling Advertising Group What I’m doing here is evaluating my experience of utilizing each psychological health service, rather than its effectiveness – because even the most wizard-like therapist isn’t going to ‘cure’ you in simply one week.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "“Whether we should approach this in the same way that we did with recycling and have the city provide a service, either directly or through a contractor, or whether we should bring forward a bylaw that asks property owners and managers to ensure that there’s an organics program in place, and then they can establish what that looks like,” said Wallace. Public engagement will begin June 3. Residents can fill out an online survey between June 3 and 22. The city will also be at a number of public events throughout June. The city will be reaching out to institutional, commercial and industrial stakeholders for feedback in the fall.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "1906 – Moving to Kirkkokatu In the beginning of the 20th century, the leadership of De Gamlas Hem i Uleåborg bought a property at the corner of two streets – Kirkkokatu and Puistokatu – and began to construct a new building for the retirement home, which had operated in rented facilities until that time. Victor J. Sucksdorff, who was the deputy county architect, designed the building. The building project was completed on schedule, on the 1st of May 1906 (the same year that women gained the right to vote in Finland). The building’s style is influenced by the flowing shapes of Art Nouveau, an architectural style popular at the turn of the 19th and 20th centuries. Art Nouveau was created in Europe at the end of the 19th century with the goal of creating a new art style.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "The consequence was a polarization of opinion between those who supported the War on Terror and those who were against it. This debate divided the human rights and humanitarian community and squeezed the space for those who favored the norm of humanitarian intervention. Nevertheless, this was also a period when responsibility to protect and associated concepts, such as human security, peacebuilding, and stabilization, were increasingly adopted by international institutions and governments, even in the United States, and the momentum of the ideas of the 1990s was carried forward. The Kaleidoscope of Global Public Debate The wars in Iraq and Afghanistan called into question the viability of humanitarian intervention. Even in the case of Libya an intervention that was supposed to protect civilians ended up as a war on the side of the rebels. With the scattering of the consensus around humanitarian intervention, it is possible to identify three broad positions that run through the debates about military intervention in the twenty-first century.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "It Ain't Safe \"It Ain't Safe\" is a song performed by British rapper Skepta, featuring a hook from Young Lord (also known as ASAP Bari). It was released in the form of a promotional video on 2 November 2014, and features on Skepta's fourth album Konnichiwa (2016). Despite being unavailable to buy until the release of the album, the song peaked to number 32 on the UK R&B Singles Chart due to strong streaming performance. Music video A music video to accompany the release of \"It Ain't Safe\" was first released onto YouTube on 31 October 2014 at a total length of four minutes and seventeen seconds. Chart performance Weekly charts Release history References Category:2014 songs Category:2014 singles Category:Skepta songs Category:Songs written by Skepta",
+      "note": "encyclopedia",
+      "python": {
+        "lang": "en",
+        "score": 0.999819,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Local hotel and real estate investor Mo Honarkar has proposed funding a new city employee or an outside contractor for up to $180,000 per year to help the Community Development Department expedite work on major projects. The proposed agreement would forbid the developer from having a say over hiring and “in no way guarantees, assures or otherwise represents that the city will provide special or preferential treatment of any application [Honarkar] might submit.” The agreement also states the funds could be used for project negotiations and “analysis of potential benefits … of applications for major development projects.”",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999981,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "|1 Corinthians 16 | 1 Now concerning the collection1 for the saints, as I have given orders to the churches of Galatia, so you do also: 2 Upon the first day of the week2 let every one of you set aside something, as God has prospered him, so that no collection will have to be taken when I come. [The first day of the week was when the early churches met, which this verse and others prove. They did not meet on the Sabbath, the seventh day. They met on the Lord's day, the day he was resurrected.] 3 And when I come, I will send whoever you approve with your letters to bring your gift to Jerusalem. 4 And if it is the Lord's will that I go also, they will go with me. 5 Now I will come to you, when I pass through Macedonia, for I must pass through Macedonia.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "If so, why does the word \"test\" come up so often in verification (especially in functional verification, we talk about testcases, testbenches, DUT (device under test), directed tests, random tests, etc...) A: Was an ASIC Design Verification Engineer at Qualcomm. In the most simple way I can explain it: Testing: Making sure a product works, after you've created the product (think QA). Verification: Making sure a product works BEFORE you've created it. They're both testing, just that verification is more complicated because you have to figure out a way to test the product before it exists and you have to be able to make sure it works as designed and to spec when it actually comes out. For example, Intel is designing their next processor, they have the specs, they have the schematics and the simulations. They spend $1 Billion USD to go through fabrication and manufacturing. Then the chip comes back and they test it and find out that it doesn't work. They just threw a lot of money out the window. Throw verification in. Verification engineers create models that simulate the behaviour of the chip, they create the testbench that will test those particular models.",
+      "note": "technical_docs",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "“At the core of what we do sits a real commitment to organic farming and sustainability. It’s a philosophy that has guided us the entire way. We’re able to run this whole farm on the electricity typically used to run a single-person household…and we’re pretty proud of that. The next goal is to become carbon neutral.” Lisa adds, “We’re constantly monitoring the organics of the soil here and we’re lucky the rainfall is plentiful. I think the proof is in the pudding with our produce. The premium food and beverage awards we’ve received are wonderful and have certainly helped put us on the map with gourmet chefs, but the real satisfaction is simply in the quality and flavours we can produce. I think you can really taste the difference.” That you can. Saffron that holds champion spice accolades, lavender that was celebrated in the Delicious Produce Awards and premium olive oil that is always a cellar door sell-out.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "For example: “The coercion worked: the man finally refused to testify against the police accused of corruption”, “I will not accept any kind of coercion”, “Despite attempts at coercion, the fishing industry workers took carry out their protest in front of the doors of the Government House ”. According to DigoPaul, coercion develops so that an individual performs – or fails to perform – an action against their will. It is important to bear in mind that coercion can be legitimate (if imposed by the State in certain contexts) or illegitimate (when it is exercised by a private subject). A democratic government has various tools for the exercise of coercion by legal means. Suppose that a group of people advance down the street throwing stones at motorists, hitting passersby and destroying shops and homes. The State, through the security forces (such as the police), can resort to coercion to make these people cease their actions. In this framework, police officers can throw tear gas to disperse the mobilization and forcibly detain individuals who are committing crimes.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "No one has come to us asking for this.\"THERE'S MORE: The Australian military has been using a similar product for years, notes Defense Tech reader GK. These \"heliboxes\" have maximum weight of just 7.5 kg, he says, but they're just right for rations, water, and the like.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999703,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "The program is open to all college undergraduate students preferably enrolled in majors geared toward an EHS career such as, but not limited to, environmental science, fire protection, health physics, industrial [ By creating an incentive for students to research and explore these important lifelong money management concepts, the Coastwise Prize for Investing Excellence will assist in developing [We've uncovered some excellent essay contests and scholarship opportunities available both to high school students and current college fmgm2018.com to the overachievers out there—you don't have. We've uncovered some excellent essay contests and scholarship opportunities available both to high school students and current college fmgm2018.com to the overachievers out there—you don't have. The American Foreign Service Association’s national high school essay contest completed its twentieth year with almost 1, submissions from 48 states, two territories and five countries (Indonesia, Burma, South Korea, Tanzania, and United Kingdom). We thank all students and teachers who took the time to research and become globally. And, unlike academic essays which mark your academic progress, essay contests for college students aim only at finding out who is the best.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Recent anti-Muslim incidents across the U.S. include arson attacks, vandalism, harassment and school bullying. In May, authorities in Portland, Oregon, say a man killed two men and wounded a third after they tried to stop his anti-Muslim tirade. Shaiq herself has faced threats at her events. One man in Atlanta warned he would \"slit her throat\" if she said something he didn't like. He listened to the discussion, never asked a question and then left. \"That was scary,\" Shaiq said. Muslim leaders consider the incidents part of a deeply alarming trend that came to the forefront in last year's presidential election with far-right activists portraying Islam — and all Muslims — as a threat.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Orientations of pyramids and temples correlates with ice ages. Nov 10, 2019 calendario venatorio sardegna 2012 pdf posted on november 10, 2019 by admin quelle di paule luturrusamugheo usai e. Sardinia carnival l visit sardinia tour operator sardinia. A unique tour to the ancient monuments, nuragic complex, approx. Nuraghe santu antine in torralbacristiano cani picture via wiki commons.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.858616,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "From the stacks of Miller Lite to the ultra rare release from tiny local breweries, we understand what makes a beer drinker tick. No pretense here: if you’re looking for an ice cold Old Style… “Hell yes!” we say. Funky sour from the Pacific Northwest? Pucker up, buttercup. Three-day-old IPA from your favorite local brewery? Now we’re talking. No beer is too small, too big, or too outlandish for consideration. Now, we can’t carry everything that’s available, but we do our best to make sure that what we DO carry is the best stuff we can get. One-and-done joke beers with a kooky label can go sit on the shelves at the supermarket. Whether you’re a blended Canadian whiskey drinker, a Highlands single malt Scotch man, or a die hard bourbon drinker, we’re your place for distilled spirits of all kinds.",
+      "note": "product_marketing",
+      "python": {
+        "lang": "en",
+        "score": 0.999997,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "“I’m heavily biased, but I thought we had a great show,” D’Ambrosio said. “Gresh (his partner) was terrific.” He did not back down when discussing the Huskies. “I thought we were extremely fair to UConn when football went downhill, which eventually got me in trouble with the head coach.” That head coach was the since fired Bob Diaco. The ratings game The public may not realize it, but radio and television live by ratings -— a process which claims to be able to measure the number of listeners or viewers a program draws. “At the end of the day, we just didn’t get the ratings,” Joe told the Courant. “That’s the bottom line in the business. If you don’t get the ratings, you’ve got to try something else to draw people to your radio station.” When the decision was passed on to them, Gresh had already made plans to leave WTIC and work at WPRO in Providence, to host a nightly 3-hour show. Plenty left to do D’Ambrosio will still be heard on WTIC on a limited basis, but not on a talk show. He will be a fill-in when needed for drive-time announcers Roy Dunaway and Bob Joyce.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Eventually, I had talked the whole family (minus M&K who had to leave) into getting hot wings for dinner… I placed a record order. $0.60 boneless wing night. I ordered: 18 plain, 20 sweet barbeque, 10 asian zing, 8 hot barbeque and 5 medium. A total of 61 wings. And now I can say the hottest I’ve had is hot bbq. It was good, but still wow. Asain zing is still my first pick probably. Anyway… Friday, my mom and I braved the traffic and mobs of idiots. I picked up some new ear buds (my panasonic ones had stopped working in the right bud, causing me to question my hearing for a while)… and I got the new Kanye cd too.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999991,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "From high-end kitchen design and bathroom design, to gorgeous living rooms and tastefully designed commercial spaces, the Interiors Panache website has it all Let’s Talk High-End Interior Design Services The designers at Interiors Panache have extensive experience in the luxury interior design business. The new website dives into the professional design skills offered including complete project management aiding with budget development and processing timelines, collaboration with architects, contractors, art consultants and trade specialists, turn-key residential interior design to especially succeed in architectural detailing and remodeling of kitchen design and bathroom design. Furthermore, selection of finishes, fabrics, fixtures, furniture, color schemes and so much more. High-End Interior Design Services Napa Interiors Panache offers services in many locations, but owner Carol barrack has a long-lasting relationship with Napa.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999975,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "This can happen in software too. ~~~ sho Is fujifilm really \"on the way down\"? They seem pretty well diversified with some good product lines. Hell, I own one of their recent cameras. Xerox I won't argue with, but they're still not exactly on death watch. Just get the sense your comment is a little negative, like they've both obviously failed and all that is left is milking the dying husks. Fujifilm could quite likely outlast facebook. It will almost certainly outlast the likes of snapchat, IMO. Old != bad. ~~~ weaksauce Fujifilm also is not just electronics. ~~~ calypso I even use their film still.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Remember what we said about creating a unique voice, describing the world as you see it? These block phrases work against this and dampen the author’s distinctive voice to just one among the many crowd. This can make your writing drained and predictable if utilized in giant amounts. Whereas to others my life might appear to be a jumble of incompatible fragments, like a jigsaw puzzle, every bit connects to change into one thing extra. Nevertheless, there are still lacking items at the periphery: experiences to have, data to realize, bad jokes to inform. Someday I hope to unravel the unsolvable. But for now, I’ve received a nonogram with my identify on it. D’aulaires’ genuine storytelling supplied me with a basis of classic thought as a younger baby. This classical mind-set has remained with me all through my public schooling, pushing me in direction of extracurricular assets focusing on Greco-Roman tradition.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "The drug was originally sold as a diabetes treatment using the brand name Victoza It reduces Topical Alli Diet Pill Fda Approved hunger by acting on a hormone in the gut. Now How Jing! The students below were quiet again, To no Control one moved, as if Appetite he hadnt heard what Hook said How To Control Appetite For Weight Loss For When Hook Weight saw this, his face also became awkward Loss He didnt expect things to develop into this way Um let go. our snacking is of the worst kind The key to healthy snacking is preparation and planning But sometimes planning and preparing for cravings isnt easy. do you Best still want Over to win back a The round so that you Counter Best Over The Counter Fat Burner 2016 can get Fat back Burner some face?",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999972,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Syngman Rhee: Christianity in Korea can be a catalyst for reconciliation The Korean Peninsula is a divided land, long torn by hostility and enmity. But Christianity is a life-giving religion that can help write a new history even there, says the noted Korean-American church leader. The land that is now North Korea was once an important and successful mission field called “the Jerusalem of the East.” And though Christianity is virtually nonexistent there today, it nevertheless offers one of the best hopes for peace and reconciliation between North and South Korea, said the Rev. Syngman Rhee. “There is a particular need for reconciliation between North and South Korea by the teaching and the love of Christ,” said Rhee, a noted Presbyterian Church (U.S.A.) and mainline church leader. Some Christians in South Korea oppose anything to do with North Korea, believing that Christianity and communism cannot coexist, Rhee said. But others disagree. “A growing number of Christians in South Korea insist that we -- Christians -- can no longer be enslaved by the belief that Christianity equals anti-communism,” Rhee said. “Christianity was not created to fight against something. It is life-giving and can be a catalyst to create a new history in any kind of society, capitalist or communist.”",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Lost was always a dangerous show in terms of credits-related spoilers, and these episodes are a big part of this: with Malcolm David Kelley disappearing from the credits, and Michelle Rodriguez popping up in them, it removes some of the suspense from the equation. In retrospect, this might have been the point where you could sense the writers starting to feel like Michael’s story on the island had run its course: I don’t know if they had planned his arc out far enough for this to be the beginning of his eventual exit (and later return), but it just feels like they’ve run out of flashback story to tell here. It happens with every character eventually (hence the flashforwards, and the Oceanic Six mand the ramping up of the series’ narrative as a whole), but Michael might be the first.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "The number can differ from 25 to 1000 Robux. Do ensure that the monetization strategy that you choose for is ethical. That way, you’ll make more in the extended run. Also, assure that there are no insects in the game. Take immediate activity if there are any. Becoming a creator is among the most popular ways of making Robux on Roblox. There’s this outrageous rage for clothing and modification of avatars on Roblox. So when you yourself have an excellent style feeling and may design those clothes for the overall game people, you have lots of range for making Real Free Robux No Human Verification.",
+      "note": "product_marketing",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "The coaches and players from either side will hype this up as a rivalry game, and while it is, the truth is the two fan bases simply don’t like each other. We saw this last year when UL Lafayette invited some of Tech’s recruits to the game. Hoping for a statement victory to help on the recruiting trail, it backfired when the Bulldogs won by 28. This is a game Tech will be favored in, but the Cajuns won’t care. They’ll come out swinging. COUNTING IT DOWN",
+      "note": "product_marketing",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "At the same time, buckling to pressure from Congress, the laboratory has rehired as advisers two former security officials whom it had fired last summer after they raised a stink about the abuse. The laboratory's director resigned earlier this month; an interim director is promising to shake up the management. He will have to work fast. Spencer Abraham, the secretary of energy, has hinted that he may curtail the university's contract to manage the laboratory. Lockheed Martin, an aerospace firm, runs Sandia National Laboratory, also in New Mexico, and its operations have been held up as an efficient contrast. The University of Texas is also hovering. It has scientists aplenty—and friends in high places. This article appeared in the United States section of the print edition under the headline \"Next stop for Blix?\"",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Liam Casey, The Canadian Press A widely used pesticide is placing bumblebee populations at an increased risk of extinction, a new study from an Ontario researcher suggests. Nigel Raine, an environmental science professor at the University of Guelph, discovered that thiamethoxam, a major neonicotinoid found in agricultural crops throughout the world, reduced the chances of bumblebee queens starting new colonies by more than a quarter.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 0.999806,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Tinder Alternatives: 9 Top Dating Apps Like Tinder for 2019 Coquitlam, Okanagan It is among one of the top dating apps with over 4 million users searching for ideal queer women. But don't let their love of raunchy internet slang make you put them in the \"hookup\" category —OkCupid is still a serious space, and most users are genuinely putting effort into finding lasting connections. Jump to navigation. Should you go for a new dating app? A really popular one? A paid or a free dating app?",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999835,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "I am seeing lots of products not getting enough attention for the last 2-3 years. \\- Safari is moving really slowly and not improved a lot except security-wise. \\- iPhones haven't gotten a revolutionary feature for a long time. \\- MacOS did not get significantly better comparing to last 3-4 years. \\- Siri looks like a paused project. and so on.. ~~~ justtopost Or just becoming bloated and complacent. ~~~ whizzkid Very possible and I would be sad in that case. tmd83 I sometimes what would happen if the Samsung battery kind of issue happened with Apple. I'm sure that they would give some logic and majority of users would still accept it. For the most people at this point it seems it's not what apple did wrong, it's what I did to cause their product to fail. Dirlewanger \"You're holding it wrong\" sebazzz JeremyRigsEverything showed that you need substantial force to bent an iPad.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Otherwise you’re just a healer that doesn’t know how to use a cleanse. Now what I think is that Bioware should revert the storymodes to include all the previous mechanics of the storymodes as before, meaning, in Karraga’s Palace learning the puzzle on Fabricator to familiarize all players how to do it. And in Dread Palace having all three portals put back in the Calphayus fight so that players again can learn what to do in that fight. But that’s my opinion. Storymodes are just auto-pilot for players. I know, I know, some players in the past cried about how difficult it was to do a storymode but that’s what doing operations is about, learning. Moving forward, I think it was smart of Bioware to remove the master mode of Eternity Vault and Karraga’s Palace. Otherwise you’d have what you did in 4.0 where players just doing the priority of only those two operations.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "A Police Scotland spokesman said: “Police in Fife are investigating following an armed robbery at a betting shop in Kirkcaldy. “The incident happened around 11.15am at the Coral bookmakers on Dunearn Drive. “A male entered the premises and presented a knife at staff before making off towards Fairisle Road with a three-figure sum of cash. “The suspect is described as having a heavy build and wearing a black beanie hat that was used to obscure his face, baggy blue jeans and a light-coloured top. “Anyone with information is asked to contact police immediately.”",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "In fact there are sleep specialists who have worked with Olympians to optimize their sleep as part of their training. For those who treat sleep as waste of time- it is a waste if you think nothing is happening when you sleep. Biologically a lot is happening. So, you are wrong- sleep is not a waste of time. Deal with it. Source- am a psychiatrist with an interest in sleep. NB: I have the journal references someplace but too lazy to find them at at present.",
+      "note": "forum_comment",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Well at least in this country a person can now believe in the TRUE CHRIST WAYS OF LOVING BEINGS UNDER TRUE WILL..without harming others..and not literally be burned at the stake or crucified on a cross… They can truly finally say f** you anti-Christ folks and tell ’em it’s our party and we can’t stop… BUT WAIT..MILEY CYRUS ALREADY DID THAT.. Ya see.. Christ has already returned in many forms of human beings.. Just consider Miley Cyrus one of many thieves coming in the night…. I could provide a list of many others..for those who could discern truth…. The NEW AGE IS ALREADY HERE.. But not everyone is listening…. To the signs that are everywhere..in this world now… But the folks that are..can hear IT LOUD AND CLEAR AND THEY ARE CELEBRATING THE TRUE LORD WHICH IS UNCONDITIONAL LOVE AND TRUE WILL IN HARMING NO OTHERS..OUT IN THE STREETS EVERYWHERE IN THE WORLD..WHERE TRUTH IS HEARD….",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999988,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "And they are experiencing the horror of not being able to control their behaviors, doing things ranging from hours and hours of pornography use to taking advantage of prostituted women or men on a daily or weekly basis, to exhibitionism to . . . you name it. These are things my clients–who are amazing people–experience in their lives. These behaviors are devastating to my clients. The consequences are real, and the pain these people feel–often interlaced with profound religious shame–is breathtaking. And that’s not to mention the betrayal trauma inflicted on spouses when discoveries of these secret compulsive behaviors are uncovered, which is another thing I specialize in. I work hard to help spouses cope with the deep wounds they feel when they have experienced a betrayal, the pain of which I outline in this article. with people in these challenging circumstances is incredibly intense, multifaceted and complex. I have paid thousands of dollars and have spent hundreds of hours in trainings and supervision with incredibly gifted clinicians to learn how to appropriately and effectively treat individuals and families that have encountered these problems.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Although there is no information regarding which journalists, if any, were involved, or their ability to pose uncensored questions, a leaked U.S State Department memo noted that this singular event helped to \"solidify Saif al-Islam's reputation as a 'reformer.'\" Following the press conference, two op-eds written by HRW officials on Libya were published, one in the U.K.'s Guardian and the other by the Institute for Policy Studies' Foreign Policy in Focus. In the article \"Postcard from … Tripoli,\" Whitson wrote glowingly of the performance staged under the direction of Saif al-Islam: I recently went to Tripoli where we held a news conference to release a report about human rights in Libya. That's right—a public event in Libya's capital at which Human Rights Watch staff sharply criticized the government led by Mu'ammar al-Qaddafi. Mundane in many countries, in Libya this was a momentous event.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999998,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "In a STARRED REVIEW, Booklist called it “A page-turner built on skillfully layered plotting and an intriguing protagonist.” But who is Darby Kane? Darby is HelenKay! But while you can count on romance with a happy ending from HelenKay Dimon, a Darby Kane book is a very different kind of book, hence the different name. Pretty Little Wife is much darker, and romance is not the main theme. This is a thriller, through and through. It starts with a wife, unraveling secrets, and a dead husband. The end is not guaranteed, and getting there is a fast-paced ride. HelenKay is totally thrilled her thriller is out! Find her on Twitter celebrating the release. And check out Pretty Little Wife for the answer to the question: Shouldn’t a dead husband stay dead? Read an excerpt then buy yours in print, ebook, or audio. November 17, 2020 LibraryReads picked Pretty Little Wife as one of the top 10 books for December that library staff across the US love! What a huge honor.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "\"It's more like a Carry On movie than anything else and I had a great time doing it\", she revealed. \"It's not a mucky movie - I don't touch anything I shouldn't! And for modesty's sake, I wore a strapless swimming costume when I was supposed to be naked in the bath scene.\"",
+      "note": "encyclopedia",
+      "python": {
+        "lang": "en",
+        "score": 0.99999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "It was reported about 10:30 p.m. Friday, April 14 VEHICLE THEFT: Vehicle theft was reported about 9:40 a.m. in the 2300 block of Alameda South Shore Center. PURSE SNATCHING: An attempted purse snatching was reported about 12:50 p.m. in the 1600 block of Webster Street. ROBBERY: Police arrested a woman, 36, on suspicion of robbery about 9:50 p.m. in the 2600 block of Fifth Street, where she allegedly used force and fear to take someone’s personal property. Saturday, April 15 RESIDENTIAL BURGLARY: The burglary of a residence in the 3000 block of Triumph Drive was reported about 3:40 p.m. PETTY THEFT: Police arrested a man, 43, on suspicion of petty theft at 10:30 p.m. after he allegedly shoplifted merchandise from a business in the 2700 block of Fifth Street. Sunday, April 16 VEHICLE THEFT: Vehicle theft was reported about 2 p.m. at Fernside Boulevard and Monte Vista Avenue; about 5:30 p.m. in the 2800 block of Barbers Point Road; about 5:55 p.m. in the 100 block of Oldcastle Lane; and about 7:10 p.m. in the 2300 block of Blanding Avenue.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 0.999593,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Now the groups of rows have been transposed to columns. If you want to more quickly transpose groups of rows to columns, please try Kutools for Excel’s Advanced Combine Rows utility. |Kutools for Excel, with more than 120 handy functions, makes your jobs easier.| After installing Kutools for Excel, please do as below:(Free Download Kutools for Excel Now!) 1. Select the range you want to transpose, click Kutools > Content > Advanced Combine Rows. See screenshot: 2. In the popped out dialog, select the group names column and choose Primary Key, and the select the column which contains values of each group to select Combine and choose one delimiter to separate the combined rows. See screenshot: 3. Click Ok, now the group of rows are combined to column.",
+      "note": "product_marketing",
+      "python": {
+        "lang": "en",
+        "score": 0.99994,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "The warning (here) is: MySQL extends the use of GROUP BY so that the select list can refer to nonaggregated columns not named in the GROUP BY clause. This means that the preceding query is legal in MySQL. You can use this feature to get better performance by avoiding unnecessary column sorting and grouping. However, this is useful primarily when all values in each nonaggregated column not named in the GROUP BY are the same for each group. The server is free to choose any value from each group, so unless they are the same, the values chosen are indeterminate. So, the values returned in the columns are indeterminate. Here is a pretty efficient way to get what you want (with \"comission\" spelled correctly in English): SELECT * FROM usercommissionconfigurationhistory cch WHERE NOT EXISTS (select 1 from usercommissionconfigurationhistory cch2 where cch2.userid = cch.userid and cch2.commissionid = cch.commissionid and cch2.ondate > cch.ondate ) AND cch.userid = 408002;",
+      "note": "technical_docs",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "“Instant Intimacy” Pornfimfestival Berlin 2017 Once again I had the opportunity to create „Instant Intimacy“ with the support of my fabulous team at the Pornfilmfestival Berlin! Instant Intimacy is an interactive bondage performance, in which I select audience members in attendance and tie them up. There´s no rehearsal; each encounter unfolds its own and unique energy.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999708,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Georgia had led 15-10 at half-time but Fiji scored four second-half tries, to add to the two Henry Seniloli got in the opening 40, to wrap up an impressive 37-15 victory and their fourth consecutive Pacific Nations Cup title. With Semi Radradra scything through the Georgian defence to set up Seniloli’s second try and Georgia barrelling over for their opening five-pointer from a powerful driving lineout in the first half-hour, it looked like the game would play out as expected. However, Fiji began to negate Georgia’s dominance at the set-piece, holding their own in the scrum and repelling the visitors’ rolling mauls. Georgia, in the second half in particular, also began to move away from their normal game plan and looked to play more expansively, running ball from deep and throwing the odd offload – but they weren’t as effective and their mistakes allowed Fiji to pounce. “We were pretty pleased with the first half,” said Georgia coach Milton Haig. “We had the possession and territory. But it was totally different in the second half. “Running out of our own half is not what we do and when the game loosens up, it plays into Fiji’s hands.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Enrique Marquez Jr., 25, of Riverside, admitted in a plea agreement released Tuesday that he bought the assault rifles used by Syed Rizwan Farook and his wife, Tashfeen Malik, in the Dec. 2, 2015, attack at a public health agency. Farook and Malik were later killed in a gunfight with authorities. Marquez also agreed to plead guilty to making false statements when he purchased the firearms used in the attack. Prosecutors said Marquez acknowledged being a “straw buyer” when he purchased two AR-15 rifles from a sporting goods store that were used in the attack at the Inland Regional Center in San Bernardino. Prosecutors have said Marquez agreed to buy the weapons because the attackers feared Farook’s Middle Eastern appearance might arouse suspicion. Prosecutors said there is no evidence Marquez participated in the San Bernardino massacre or had advance knowledge of it.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "More than 36,000 of those businesses were classified as employee-less, meaning they exclusively use either contractors or family members who are not listed on their payroll, while another 8,500 reported having four or fewer employees. There were 421 businesses in the region with more than 100 employees. Fifty-five of those reported employing more than 500 people. It was a very different story in Guelph and Wellington County, where the report found 24,390 businesses in operation as of last December – a decrease of 1,308 from June 2017. In that area, declines were reported in the number of businesses at all level of employment except the biggest. There were 22 businesses reporting that they had at least 500 employees, up from 20 six months earlier.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "By subclassing BLKFlexibleHeightBarBehaviorDefiner, developers can have complete control over how and when a bar's progress property (and therefore, height) is updated. In most scenarios, BLKFlexibleHeightBarBehaviorDefinerisn't useful until subclassed. By itself, it only provides snapping functionality and a property that controls whether or not the bar bounces when it reaches its maximum height. It makes no attempt to adjust the height of the bar during scrolling. Start by creating a subclass The basic pattern for the definer is as follows: -scrollViewDidScroll:is generally a useful starting point. Based on the current scroll position in -scrollViewDidScroll:, calculate a new progress value for the behavior definer's flexibleHeightBarproperty. It will be useful to ask the self.flexibleHeightBar.progressto the calculated value from step 2.",
+      "note": "product_marketing",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "The film revolves around a vegetable cutter from Chandni Chowk in Delhi who finds himself on an adventure in China after the residents of an oppressed village deem him to be the reincarnation of a slain Chinese revolutionary. The film was distributed in the U.S. and co-produced by Warner Bros. It is Warner Bros. Pictures' first Hindi film. Released on 16 January 2009, it was the third highest-grossing film of the year at the Indian Box Office. Following this Advani produced Jaane Kahan Se Aayi Hai (2010), a Bollywood science fiction romance film directed by Milap Zaveri. It stars Riteish Deshmukh, Jacqueline Fernandez, Sonal Sehgal, and Ruslaan Mumtaz in lead roles. Nikkhil Advani is a National Award-winning filmmaker whose children’s film Delhi Safari (2012) was India’s first 3-D Stereoscopic Animation Feature. It advocated for wildlife conservation and is currently being developed into a full-fledged franchise in Hollywood.",
+      "note": "academic_formal",
+      "python": {
+        "lang": "en",
+        "score": 0.999987,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Arab Federation The Arab Federation of Iraq and Jordan was a short-lived country that was formed in 1958 from the union of Iraq and Jordan. Although the name implies a federal structure, it was de facto a confederation. The Federation was formed on 14 February 1958, when King Faisal II of Iraq and his cousin, King Hussein of Jordan, sought to unite their two Hashemite kingdoms, as a response to the formation of the United Arab Republic between Egypt and Syria.",
+      "note": "encyclopedia",
+      "python": {
+        "lang": "en",
+        "score": 0.999792,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Dewan and his family were invited to the ceremony due to the loss of a family member, but the firefighter has refused to attend an event where the other firefighters in his uncle's ladder are not invited. “I will be at the firehouse, where the firefighters continue to do the right thing and carry on the legacy of their friends and coworkers with pride and dignity,” he explains. News of the online petition campaign's success is likely to increase pressure on Bloomberg's office. “To not give them a seat at the ceremony is absolutely a slap in the face to every one of those men and women that did what they had to do that day,” wrote Change.org member Samantha Flores in the petition comments. “And it's a slap in the face to all of them that died or were injured saving other peoples' lives.” Change.org Human Rights Organizer Sarah Marie Ryan says: “It's no surprise this campaign would attract so much attention. One can see from the comments on the petition that this issue is not just close to the hearts of first responders but to those Americans across the country affected by the events on Sept. 11.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 1.0,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Suppose, however, that this process is incomplete, perhaps because some consumers are credit constrained, and so spend rather than save their tax cut. Does that not mean prices will still have to rise a bit to match the increase in the supply of nominal bonds? However, if we still have a fixed nominal amount of money, then higher prices will raise the demand for money, giving us a contradiction.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "\"I condemn white supremacists and racists and white Nazi groups and all the other groups that espouse this kind of hatred,\" Bossert said. When asked by on NBC's \"Meet the Press\" why Trump did not single-out the neo-Nazis or white supremacists in his comments, White House national security adviser H.R. McMaster said: \"When he condemned bigotry and hatred on all sides, that includes white supremacists and neo-Nazis, and I think it's clear. I know it's clear in his mind.\" Trump declared his intention to run for re-election at the very beginning of his presidency and in recent months has taken part in several campaign events, including holding a $35,000-per-seat fundraiser in June.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 0.999989,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "“The flights will offer our customers the fastest way to travel between the two cities – in great comfort, together with Singapore Airlines’ legendary service – and will help boost connectivity to and through the Singapore hub.” TODAY IN THE SKY: Singapore Airlines is again flying nonstop to USA from Singapore (story continues below) Singapore Airlines debuts San Francisco-Singapore nonstops Singapore Airlines' first nonstop flight from Singapore to San Francisco lands at San Francisco International Airport on Oct. 23, 2016. The inaugural flight gave Singapore Airlines a nonstop route between the USA and its home country for the first time in three years. 01 / 10 Singapore Airlines' first nonstop flight from Singapore to San Francisco lands at San Francisco International Airport on Oct. 23, 2016. The inaugural flight gave Singapore Airlines a nonstop route between the USA and its home country for the first time in three years. 01 / 10 Singapore’s new A350ULRs will be configured with just 161 seats in a two-class layout.",
+      "note": "news",
+      "python": {
+        "lang": "en",
+        "score": 0.999954,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "This will be a lot easier for you if you create some constructors for your objects, something like this: public Package(number, height, length, width) { boxNumber = number; boxHeight = height; //rest of your properties here in same format } You can then also make your setters private in the class, if you wish. You can then easily create your package objects: var package1 = new Package(10, 10, 10, 10); This should make it a lot easier to create your list of boxes to put in your rootObject. You can add each package to the packages list (individually or within a foreach loop): Packages.Add(package1) Or you could even start getting more concise: Packages.Add(new Package(10,10,10,10)); You want to separate your concerns more to help keep this clear - so I'd recommend you fully construct your rootObject, add the packages to the list in one class (your 3rd code snippet), and then serialize it another (your 2nd code snippet).",
+      "note": "technical_docs",
+      "python": {
+        "lang": "en",
+        "score": 0.999999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "According to the UN Panel of Experts Report, released March 2019, GENCO (also known as KOGEN) has close links to the Mansudae Overseas Project Group (MOP). Mansudae are a sanctioned entity and has links to the RGB and the the UN designated entity KOMID – the DPRK’s main overseas arms trader and a key funding source for the regime’s nuclear weapons program. So what have Mansudae and GENCO been up to in Africa? Pyongyang Papers decided to take a look. Guinea and Sierra Leone The UN Panel of Experts report 2019 annex makes interesting reading when it come to DPRK construction activity in Guinea and Sierra Leone. Letters sent by the UN to a Guinean firm called GUICOPRES accuse the company of using DPRK labor to construct a military base in Sierra Leone.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.99999,
+        "is_english": true
+      }
+    },
+    {
+      "group": "native_english",
+      "text": "Though the role of the manager varies from country to nation, normally it’s going to propose nearly all of laws, and suggest authorities agenda. In presidential techniques, the manager usually has the facility to veto legislation. Most executives in both techniques are accountable for overseas relations , the navy and police, and the paperwork. Ministers or other officers head a country’s public workplaces, reminiscent of a international ministry or defence ministry The election of a distinct government is due to this fact able to revolutionising an entire country’s approach to authorities.",
+      "note": "blog_personal",
+      "python": {
+        "lang": "en",
+        "score": 0.999997,
+        "is_english": true
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Longtemps, je me suis couché de bonne heure. Parfois, à peine ma bougie éteinte, mes yeux se fermaient si vite que je n'avais pas le temps de me dire: Je m'endors. Et, une demi-heure après, la pensée qu'il était temps de chercher le sommeil m'éveillait; je voulais poser le volume que je croyais avoir encore dans les mains et souffler ma lumière.",
+      "note": "fr",
+      "python": {
+        "lang": "fr",
+        "score": 1.0,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Als Gregor Samsa eines Morgens aus unruhigen Träumen erwachte, fand er sich in seinem Bett zu einem ungeheueren Ungeziefer verwandelt. Er lag auf seinem panzerartig harten Rücken und sah, wenn er den Kopf ein wenig hob, seinen gewölbten, braunen, von bogenförmigen Versteifungen geteilten Bauch.",
+      "note": "de",
+      "python": {
+        "lang": "de",
+        "score": 1.0,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "En un lugar de la Mancha, de cuyo nombre no quiero acordarme, no ha mucho tiempo que vivía un hidalgo de los de lanza en astillero, adarga antigua, rocín flaco y galgo corredor. Una olla de algo más vaca que carnero, salpicón las más noches, duelos y quebrantos los sábados, lentejas los viernes.",
+      "note": "es",
+      "python": {
+        "lang": "es",
+        "score": 0.990181,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Nel mezzo del cammin di nostra vita mi ritrovai per una selva oscura, ché la diritta via era smarrita. Ahi quanto a dir qual era è cosa dura esta selva selvaggia e aspra e forte che nel pensier rinova la paura. Tant' è amara che poco è più morte.",
+      "note": "it",
+      "python": {
+        "lang": "it",
+        "score": 0.999008,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Algum tempo hesitei se devia abrir estas memórias pelo princípio ou pelo fim, isto é, se poria em primeiro lugar o meu nascimento ou a minha morte. Suposto o uso vulgar seja começar pelo nascimento, duas considerações me levaram a adotar diferente método.",
+      "note": "pt",
+      "python": {
+        "lang": "pt",
+        "score": 0.999795,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Het was een zeer warme dag in het midden van de zomer en de straten van de stad lagen er verlaten bij. De winkels waren gesloten en de mensen bleven binnen waar het koeler was. Pas tegen de avond kwam er weer beweging in de buurt en gingen de deuren langzaam open.",
+      "note": "nl",
+      "python": {
+        "lang": "nl",
+        "score": 1.0,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Все счастливые семьи похожи друг на друга, каждая несчастливая семья несчастлива по-своему. Все смешалось в доме Облонских. Жена узнала, что муж был в связи с бывшею в их доме француженкою-гувернанткой, и объявила мужу, что не может жить с ним в одном доме.",
+      "note": "ru",
+      "python": {
+        "lang": "ru",
+        "score": 0.998373,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Litwo, Ojczyzno moja! ty jesteś jak zdrowie. Ile cię trzeba cenić, ten tylko się dowie, kto cię stracił. Dziś piękność twą w całej ozdobie widzę i opisuję, bo tęsknię po tobie. Panno święta, co jasnej bronisz Częstochowy i w Ostrej świecisz Bramie!",
+      "note": "pl",
+      "python": {
+        "lang": "pl",
+        "score": 1.0,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Det var en gång en liten flicka som bodde långt uppe i norr där vintrarna är långa och mörka. Hon hade aldrig sett havet men hon hade hört talas om det av sin farmor som en gång i sin ungdom hade rest ända ner till kusten och tillbaka igen.",
+      "note": "sv",
+      "python": {
+        "lang": "sv",
+        "score": 0.999997,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "Bir zamanlar küçük bir kasabada yaşayan yaşlı bir adam vardı. Her sabah erkenden kalkar, bahçesindeki ağaçları sular ve sonra uzun bir yürüyüşe çıkardı. Kasabadaki herkes onu tanır ve selam verirdi çünkü yıllardır aynı yolları yürüyordu.",
+      "note": "tr",
+      "python": {
+        "lang": "tr",
+        "score": 0.99984,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。吾輩はここで始めて人間というものを見た。しかもあとで聞くとそれは書生という人間中で一番獰悪な種族であったそうだ。",
+      "note": "ja",
+      "python": {
+        "lang": "ja",
+        "score": 1.0,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "从前有一个小村庄，村子后面有一座很高的山。山上长满了松树，每到秋天，风吹过树林的时候就会发出很大的声音。村里的孩子们常常爬到半山腰去玩，然后在天黑之前赶回家里吃晚饭。",
+      "note": "zh",
+      "python": {
+        "lang": "zh",
+        "score": 0.975708,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "كان يا ما كان في قديم الزمان رجل عجوز يعيش في قرية صغيرة قرب النهر. كان يخرج كل صباح إلى حقله ويعمل حتى غروب الشمس ثم يعود إلى بيته متعبا ولكنه سعيد. وكان أهل القرية يحبونه كثيرا لأنه كان يساعد كل من يحتاج إليه.",
+      "note": "ar",
+      "python": {
+        "lang": "ar",
+        "score": 0.949804,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "옛날 옛적에 작은 마을에 한 노인이 살았습니다. 그는 매일 아침 일찍 일어나 밭에 나가 일을 했고 해가 질 때까지 쉬지 않았습니다. 마을 사람들은 모두 그를 존경했고 어려운 일이 생기면 언제나 그를 찾아가 조언을 구하곤 했습니다.",
+      "note": "ko",
+      "python": {
+        "lang": "ko",
+        "score": 1.0,
+        "is_english": false
+      }
+    },
+    {
+      "group": "non_english",
+      "text": "एक समय की बात है, एक छोटे से गाँव में एक किसान रहता था। वह हर सुबह जल्दी उठकर अपने खेतों में काम करने जाता था और शाम तक वहीं रहता था। गाँव के सभी लोग उसकी मेहनत की तारीफ करते थे क्योंकि वह कभी आराम नहीं करता था।",
+      "note": "hi",
+      "python": {
+        "lang": "hi",
+        "score": 0.999416,
+        "is_english": false
+      }
+    }
+  ]
+}

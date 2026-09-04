@@ -60,6 +60,7 @@ by a fixture both test suites read. If you change one, change the Python side an
 | `aggregate.ts` | `eval/aggregate.py` | `aggregate.json` |
 | `tokenize.ts` | (truncation semantics) | `tokenize.json` |
 | the whole pipeline | `eval/documents.py` | `documents.json` |
+| `content/langgate.ts` | `corpus/lang.py` (agreement only) | `langgate.json` |
 
 `bundle-config.ts` is **generated** by `tools/sync_extension_assets.py`. No calibration
 constant is written by hand anywhere; that is what makes §4.7 true.
@@ -113,5 +114,3 @@ beyond the local caches (§1, §11).
 - **The model host is a placeholder.** `bundle-config.ts` points at
   `https://github.com/OWNER/REPO/releases/download`. Set it with
   `tools/sync_extension_assets.py --base-url`, and publish the bundle there.
-- **No `fixtures/langgate.json`.** §7.2 asks for one asserting the two language gates agree,
-  and more importantly that their disagreements are not systematically non-native.

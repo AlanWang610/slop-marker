@@ -26,6 +26,24 @@ bundle is absent or a different version, since `artifacts/` never enters git:
   onnxruntime. The oracle ONNX Runtime Web must reproduce. A browser session that loads,
   runs, and returns quietly wrong numbers is exactly how r1 shipped a model that had lost
   twenty points of AUROC.
+- `documents.json` — whole documents through `chunk_block` → int8 ONNX → `aggregate`, the
+  path `eval/documents.py::score_document` runs. Pins the *composition* rather than the
+  stages, which is what §1's "identical detection behaviour" means in practice. It carries
+  public-domain human prose alongside the repo's own markdown, because the markdown all
+  flags and a fixture with no negative case would pass against an extension that flagged
+  everything.
+
+Corpus-derived, emitted by `training/scripts/make_langgate_fixture.py` from a processed
+windows shard:
+
+- `langgate.json` — §7.2's language-gate assertion. Not that the two gates agree block for
+  block (the gate is not a coupling point) but that they agree on *acceptance*, and that
+  where they disagree the disagreement is not concentrated on non-native English. Its
+  English cases are real corpus windows — `hard_negative_kind == non_native_forum` and
+  human windows with none — because the question is whether a detector trips on real
+  second-language prose, and constructed examples answer an easier one. Non-English is
+  public-domain prose, since the corpus is English-gated and contains none. A privacy
+  filter drops any window carrying a link, handle, email or phone number.
 
 Regenerate the model-dependent pair after a model refresh:
 
