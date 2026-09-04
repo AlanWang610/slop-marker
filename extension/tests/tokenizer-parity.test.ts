@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { truncateLikeTokenizers } from "../src/shared/tokenize.js";
 import { bundleDirFor, loadFixture } from "./fixtures.js";
 
 interface TokenizeFixture {
@@ -19,6 +20,7 @@ interface TokenizeFixture {
   max_length: number;
   cls_token_id: number;
   sep_token_id: number;
+  n_truncated: number;
   cases: Array<{ text: string; input_ids: number[]; attention_mask: number[] }>;
 }
 
@@ -44,12 +46,21 @@ describe.skipIf(!have)(`tokenizer parity (${fx.model_version})`, async () => {
     expect(ids[ids.length - 1]).toBe(fx.sep_token_id);
   });
 
+  /** Exactly what src/worker/worker.ts does. */
+  const encode = (text: string): { ids: number[]; mask: number[] } => {
+    const out = tokenizer(text, { truncation: false });
+    return truncateLikeTokenizers(
+      Array.from(out.input_ids.data as BigInt64Array, Number),
+      Array.from(out.attention_mask.data as BigInt64Array, Number),
+      fx.max_length,
+      fx.sep_token_id,
+    );
+  };
+
   it("matches the Python token ids on every case", () => {
     const mismatches: string[] = [];
     for (const c of fx.cases) {
-      const out = tokenizer(c.text, { truncation: true, max_length: fx.max_length });
-      const ids = Array.from(out.input_ids.data as BigInt64Array, Number);
-      const mask = Array.from(out.attention_mask.data as BigInt64Array, Number);
+      const { ids, mask } = encode(c.text);
       if (JSON.stringify(ids) !== JSON.stringify(c.input_ids)) {
         mismatches.push(`ids differ for ${JSON.stringify(c.text.slice(0, 60))}`);
       } else if (JSON.stringify(mask) !== JSON.stringify(c.attention_mask)) {
@@ -61,5 +72,29 @@ describe.skipIf(!have)(`tokenizer parity (${fx.model_version})`, async () => {
 
   it("truncates at max_length", () => {
     for (const c of fx.cases) expect(c.input_ids.length).toBeLessThanOrEqual(fx.max_length);
+  });
+
+  /**
+   * The regression this file exists for. transformers.js truncates the post-processed
+   * sequence by slicing, which drops the closing [SEP]; Python truncates the content and
+   * re-applies the post-processor, which keeps it. Worth 0.42 of logit on a real chunk, and
+   * chunk_block produces truncating chunks routinely (scope.md 4.3).
+   */
+  it("keeps the closing [SEP] when truncating", () => {
+    expect(fx.n_truncated).toBeGreaterThan(0);
+    let checked = 0;
+    for (const c of fx.cases) {
+      if (c.input_ids.length < fx.max_length) continue;
+      checked += 1;
+      expect(c.input_ids[c.input_ids.length - 1]).toBe(fx.sep_token_id);
+
+      const naive = tokenizer(c.text, { truncation: true, max_length: fx.max_length });
+      const naiveIds = Array.from(naive.input_ids.data as BigInt64Array, Number);
+      // If transformers.js ever fixes this, the guard becomes redundant rather than wrong.
+      if (naiveIds[naiveIds.length - 1] !== fx.sep_token_id) {
+        expect(encode(c.text).ids).toEqual(c.input_ids);
+      }
+    }
+    expect(checked).toBe(fx.n_truncated);
   });
 });

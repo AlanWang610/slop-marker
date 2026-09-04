@@ -1,0 +1,440 @@
+{
+  "version": 1,
+  "model_version": "mb-base-0.2.0-dev",
+  "note": "Whole documents through chunk_block -> int8 ONNX -> aggregate, the same path eval/documents.py::score_document runs. Pins the composition, not the stages: this is what scope.md 1's 'identical detection behaviour' means in practice.",
+  "tolerance": 0.001,
+  "documents": [
+    {
+      "name": "calibration-mb-base-0.2.0-dev.md",
+      "text": "Thresholds selected on the **quantized artifact that ships**, not on the PyTorch checkpoint (scope.md 5.5). Artifact: weight-only int8 encoder with an int4 embedding table, 136.7 MB; bundle 140.3 MB across six files. Selection ran on the calibration split, verification on test. Both were sampled genre-stratified: 21,485 calibration and 21,767 test windows, so the smallest genre still carries ~900 human windows rather than the 57 that set the threshold in r1. The question scope.md 4.4 left open: what does shipping a single global threshold cost, against an oracle that knows each window's genre and uses that genre's own threshold? The reason the gap is small is visible in the per-genre thresholds below. They span 0.179 to 0.840, which looks like a lot -- but the classes are separated well enough in every genre (AUC 0.987 to 0.998) that moving the threshold across that range costs little recall. A single threshold is cheap precisely because the model is good. Threshold is the per-genre 2%-FPR point; `fpr_upper` is the Clopper-Pearson 95% upper bound. `t_on` is the maximum over this column, which is why `press_release` binds. Selection used a margin (thresholds chosen at a fraction of target on calibration) so that the bound is met on held-out data rather than half the time. It is: Test AUROC of 0.9939 on the quantized artifact equals the PyTorch checkpoint's 0.9939 on the same split. Quantization cost nothing measurable end to end. 0.7% of windows land on opposite sides of the threshold between the two artifacts. That is the honest cost of quantization for a reader: roughly one highlighted passage in 140 would differ had the extension shipped fp32 at 599 MB.",
+      "chunks": [
+        {
+          "text": "Thresholds selected on the **quantized artifact that ships**, not on the PyTorch checkpoint (scope.md 5.5). Artifact: weight-only int8 encoder with an int4 embedding table, 136.7 MB; bundle 140.3 MB across six files. Selection ran on the calibration split, verification on test. Both were sampled genre-stratified: 21,485 calibration and 21,767 test windows, so the smallest genre still carries ~900 human windows rather than the 57 that set the threshold in r1. The question scope.md 4.4 left open: what does shipping a single global threshold cost, against an oracle that knows each window's genre and uses that genre's own threshold? The reason the gap is small is visible in the per-genre thresholds below. They span 0.179 to 0.840, which looks like a lot -- but the classes are separated well enough in every genre (AUC 0.987 to 0.998) that moving the threshold across that range costs little recall. A single threshold is cheap precisely because the model is good. Threshold is the per-genre 2%-FPR point; `fpr_upper` is the Clopper-Pearson 95% upper bound. `t_on` is the maximum over this column, which is why `press_release` binds. Selection used a margin (thresholds chosen at a fraction of target on calibration) so that the bound is met on held-out data rather than half the time. It is: Test AUROC of 0.9939 on the quantized artifact equals the PyTorch checkpoint's 0.9939 on the same split. Quantization cost nothing measurable end to end. 0.7% of windows land on opposite sides of the threshold between the two artifacts. That is the honest cost of quantization for a reader: roughly one highlighted passage in 140 would differ had the extension shipped fp32 at 599 MB.",
+          "words": 275,
+          "logit": 2.7144997119903564
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9761866137046425
+        ],
+        "chunk_p_penalized": [
+          0.9761866137046425
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 275,
+            "score": 0.9761866137046425,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "corpus-gate-v1.md",
+      "text": "964,319 windows from 253,199 documents. Five of six probes failed. Recorded because the diagnosis drove two corpus changes, and because a gate that never fails is not a gate. P2 is the one that gives the game away: erase every letter, keep only punctuation and spacing, and the classes are still separable at 0.856. P9 says the same thing from the other side -- in-distribution 0.932 against held-out 0.927 means the probe transfers perfectly to generators it has never seen, so it learned the harness rather than AI writing. P6 passing is the one piece of good news: seed length mirroring worked, so document length carries almost no class information. The em-dash ratio is deliberately left alone. That is AI writing style, it appears on the real web, and removing it would make the corpus easier than reality.",
+      "chunks": [
+        {
+          "text": "964,319 windows from 253,199 documents. Five of six probes failed. Recorded because the diagnosis drove two corpus changes, and because a gate that never fails is not a gate. P2 is the one that gives the game away: erase every letter, keep only punctuation and spacing, and the classes are still separable at 0.856. P9 says the same thing from the other side -- in-distribution 0.932 against held-out 0.927 means the probe transfers perfectly to generators it has never seen, so it learned the harness rather than AI writing. P6 passing is the one piece of good news: seed length mirroring worked, so document length carries almost no class information. The em-dash ratio is deliberately left alone. That is AI writing style, it appears on the real web, and removing it would make the corpus easier than reality.",
+          "words": 138,
+          "logit": 3.107841968536377
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9859570707364553
+        ],
+        "chunk_p_penalized": [
+          0.9859570707364553
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 138,
+            "score": 0.9859570707364553,
+            "flagged": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "corpus-gate.md",
+      "text": "The gate runs deliberately weak baselines and every probe has a *band*, not a ceiling. Bands were set a priori from design reasoning, before any corpus existed. Three builds: The strongest single driver is lexical diversity, which is a property of AI writing and exactly what a detector should key on. So is em-dash rate, word length and comma density -- these were deliberately left alone, since removing them would make the corpus easier than the web. The residual artifact is the same family as the digit problem, one level down: human documents carry proper nouns, named sources and parenthetical asides that AI text about the same topic does not reproduce as densely. Passing figures into the prompts reduced this; passing entities did not fully close it. Two of the three remaining failures are substantially explained by legitimate style signal, and P9 passing is evidence the corpus is not merely encoding our harness -- the bag-of-words probe now loses measurable ground on generators it has never seen. But this is not proof, and the bands were not met. The residual specificity confound is real and will inflate measured performance relative to production, where AI text is often edited and human text is not uniformly citation-dense. The per-genre false-positive numbers should be read with that in mind. A fourth corpus iteration targeting entity density is the obvious next step. It was not run because each cycle is roughly ninety minutes and the returns were diminishing; that is a scheduling decision, not a claim that the corpus is clean.",
+      "chunks": [
+        {
+          "text": "The gate runs deliberately weak baselines and every probe has a *band*, not a ceiling. Bands were set a priori from design reasoning, before any corpus existed. Three builds: The strongest single driver is lexical diversity, which is a property of AI writing and exactly what a detector should key on. So is em-dash rate, word length and comma density -- these were deliberately left alone, since removing them would make the corpus easier than the web. The residual artifact is the same family as the digit problem, one level down: human documents carry proper nouns, named sources and parenthetical asides that AI text about the same topic does not reproduce as densely. Passing figures into the prompts reduced this; passing entities did not fully close it. Two of the three remaining failures are substantially explained by legitimate style signal, and P9 passing is evidence the corpus is not merely encoding our harness -- the bag-of-words probe now loses measurable ground on generators it has never seen. But this is not proof, and the bands were not met. The residual specificity confound is real and will inflate measured performance relative to production, where AI text is often edited and human text is not uniformly citation-dense. The per-genre false-positive numbers should be read with that in mind. A fourth corpus iteration targeting entity density is the obvious next step. It was not run because each cycle is roughly ninety minutes and the returns were diminishing; that is a scheduling decision, not a claim that the corpus is clean.",
+          "words": 257,
+          "logit": 3.863422393798828
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9949591128423655
+        ],
+        "chunk_p_penalized": [
+          0.9949591128423655
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 257,
+            "score": 0.9949591128423655,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "document-eval-r1.md",
+      "text": "Everything in `calibration-*.md` is chunk-level, and a chunk is not what anyone sees. A reader sees a highlighted **run**, produced only after the length penalty, run pooling, the document prior and the 150-word minimum. These numbers come from the whole scope.md 8 path -- `chunk_block` -> int8 ONNX -> `aggregate` -- on the artifact that ships. The plan's gate is **doc-level FPR <= 3%**. All three pass with roughly a factor of four in hand on the upper bound, and `release_gate` now refuses a bundle that cannot show this measurement (see `export-r1.md`). So the residual false-positive risk is not where the design expected it. It is citation- dense academic prose and ordinary personal blogs, not marketing or press-release boilerplate. The first external test this model has faced, and the one that says how much of the 0.9939 on our own test split is corpus-specific. The top four are continuous prose, which is what this corpus is made of. The bottom two are structurally different text -- recipes are ingredient lists and imperative steps, poetry is verse -- and the model is at chance on both. Neither appears anywhere in training. That is a legible boundary rather than a mystery, and it is also a warning: the corpus covers eight web genres and generalizes within that shape, not outside it. RAID's attacks were not informative here. Only `none` and `whitespace` survived the per-cell sampling in useful numbers, and whitespace insertion did not reduce recall: Whitespace scoring *higher* than unattacked is about two standard errors at this size. It persisted from a smaller run rather than washing out, and the plausible mechanism is that whitespace insertion fragments tokenization into sequences that read as un-humanlike. Treat it as unexplained, not as evidence of robustness. 1. **A stream prefix is not a sample.** RAID's train split is ordered by domain, so reading the first 60k rows returned 1,493 documents all from `abstracts`, with three attacks of twelve, and reported an AUROC for it. Now stratified by (domain, class, attacked) cell over the whole file, printing which domains it reached. 2. **AUROC over ties describes the ties.** Documents were ranked by `max_run_score`, which defaults to 0.0 when no run clears `t_on`. 86% of RAID documents produce no run, so both classes collapsed onto one value and AUROC sat near chance by construction -- the 0.563 first reported. Ranking now uses the strongest penalized chunk, which is always defined. 3. **Genre came from the wrong place.** `build()` relabels documents still marked `other` from their text and writes the result into the windows without updating `interim/`, so reading `doc.genre` reported the harvester's guess. It put 42% of the sample in a bucket the corpus manifest does not contain and made `blog_personal` vanish. The headline FPR never depended on genre; the per-genre attribution did, and it was wrong -- an earlier reading blamed `press_release` for a false positive that was actually a personal blog. A fourth is worth noting as a reproducibility fix rather than a defect in a published number: the document pool was built by iterating a `set` of document ids, and Python randomizes string hashing per process, so the seeded shuffle drew a different sample on every run. `test_human` measured 3/1,500 before the fix and 5/1,500 after -- two draws from the same population, overlapping intervals, no change to any conclusion, but only the second is reproducible.",
+      "chunks": [
+        {
+          "text": "Everything in `calibration-*.md` is chunk-level, and a chunk is not what anyone sees. A reader sees a highlighted **run**, produced only after the length penalty, run pooling, the document prior and the 150-word minimum. These numbers come from the whole scope.md 8 path -- `chunk_block` -> int8 ONNX -> `aggregate` -- on the artifact that ships. The plan's gate is **doc-level FPR <= 3%**. All three pass with roughly a factor of four in hand on the upper bound, and `release_gate` now refuses a bundle that cannot show this measurement (see `export-r1.md`). So the residual false-positive risk is not where the design expected it. It is citation- dense academic prose and ordinary personal blogs, not marketing or press-release boilerplate. The first external test this model has faced, and the one that says how much of the 0.9939 on our own test split is corpus-specific. The top four are continuous prose, which is what this corpus is made of. The bottom two are structurally different text -- recipes are ingredient lists and imperative steps, poetry is verse -- and the model is at chance on both. Neither appears anywhere in training. That is a legible boundary rather than a mystery, and it is also a warning: the corpus covers eight web genres and generalizes within that shape, not outside it. RAID's attacks were not informative here. Only `none` and `whitespace` survived the per-cell sampling in useful numbers, and whitespace insertion did not reduce recall: Whitespace scoring *higher* than unattacked is about two standard errors at this size. It persisted from a smaller run rather than washing out, and the plausible mechanism is that whitespace insertion fragments tokenization into sequences that read as un-humanlike. Treat it as unexplained, not as evidence of robustness. 1. **A stream prefix is not a sample.** RAID's train split is ordered by domain, so reading the first 60k rows returned 1,493 documents all from `abstracts`, with three attacks of twelve, and reported an AUROC for it. Now stratified by (domain, class, attacked) cell over the whole file, printing which domains it reached. 2. **AUROC over ties describes the ties.** Documents were ranked by `max_run_score`, which defaults to 0.0 when no run clears `t_on`. 86% of RAID documents produce no run, so both classes collapsed onto one value and AUROC sat near chance by construction -- the 0.563 first reported.",
+          "words": 392,
+          "logit": 3.56056547164917
+        },
+        {
+          "text": "Ranking now uses the strongest penalized chunk, which is always defined. 3. **Genre came from the wrong place.** `build()` relabels documents still marked `other` from their text and writes the result into the windows without updating `interim/`, so reading `doc.genre` reported the harvester's guess. It put 42% of the sample in a bucket the corpus manifest does not contain and made `blog_personal` vanish. The headline FPR never depended on genre; the per-genre attribution did, and it was wrong -- an earlier reading blamed `press_release` for a false positive that was actually a personal blog. A fourth is worth noting as a reproducibility fix rather than a defect in a published number: the document pool was built by iterating a `set` of document ids, and Python randomizes string hashing per process, so the seeded shuffle drew a different sample on every run. `test_human` measured 3/1,500 before the fix and 5/1,500 after -- two draws from the same population, overlapping intervals, no change to any conclusion, but only the second is reproducible.",
+          "words": 170,
+          "logit": 3.3235983848571777
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9923912202854762,
+          0.9895085339225577
+        ],
+        "chunk_p_penalized": [
+          0.9923912202854762,
+          0.9895085339225577
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 1,
+            "words": 562,
+            "score": 0.9910643485384617,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "export-r1.md",
+      "text": "The first export produced a complete, checksummed six-file bundle containing a model that had lost twenty points of AUROC. It was assembled because nothing in the export path scores the model, and the release gate that would have caught it was specified, written into the plan, and never implemented. The fp32 parity result is the one worth dwelling on. It is genuinely good, and it proves the export is faithful -- the ModernBERT sliding-window mask did not constant-fold, which was the failure this project spent the most design effort guarding against. It says nothing whatever about the quantized graph, because it was measured on the fp32 graph, before quantization ran. Two variables moved between the 0.9939 and the 0.7849: the artifact (PyTorch to int8) and the split (val to calibration/test). Scoring both full splits with PyTorch separated them -- test at 0.9939 is if anything higher than val, so the split is not the explanation and the model is intact. That leaves quantization, and the first hypothesis was wrong. `onnx_export.py` named the embedding `Gather` in its own module docstring as \"the riskiest step in this pipeline for a detector whose signal is lexical\", so the `Gather` was the obvious suspect. Measured, it is not: leaving the embedding table entirely in fp32 scores 0.8027 against the 0.8103 that quantizes it. The docstring read as evidence because it was confidently written, but nothing in it had been measured. 1. `extra_options={\"MatMulConstBOnly\": False}`. ONNX Runtime defaults this to True, restricting quantization to MatMuls with a constant B operand -- the weights. False also quantizes the activation-by-activation products inside attention, Q.K^T and attn.V, which hold no weights and degrade badly in int8. Fixing it recovered 17 points of AUROC. The node count had said so all along: ModernBERT-base has 22 x 4 weight MatMuls plus a two-MatMul head, so 90 is correct and the export produced 136. The assertion was `>= 80` with no ceiling, so quantizing half again too much looked exactly like quantizing correctly. 2. Dynamic quantization of *activations*, which no op list can switch off. This is what still cost 4-6 points of pAUC afterwards, and it is why the fix is weight-only quantization rather than a better dynamic recipe. See the recipe table below. Recorded for completeness. Every number below is a property of a model that does not work, and none of it should be carried forward. A recall of 2.9% at the shipped threshold is the model failing, not the threshold being conservative. The oracle gap of 0.203 was the number this project most wanted -- the empirical cost of scope.md 4.4's decision to ship one global threshold -- and it cannot be read off a broken artifact. It remains unmeasured. A missing comparison is a failure, not a pass. That is the specific way the original path was wrong: absence of evidence read as evidence of correctness. The split between the two families is the whole story. `quantize_dynamic` compresses weights *and* rescales activations per tensor at runtime; `MatMulNBits` compresses only the constant weight operands and leaves activations in float. Weight-only is lossless here -- pAUC marginally above fp32 -- and no dynamic recipe comes close, whatever is done with per-channel scales, reduce_range, or the embedding table. Two sweeps over identical inputs returned AUROC 0.978 and 0.550 for the same dynamic recipe, from files identical in size, node counts and every flag. Scoring the same 400 rows twice per container across three containers explains it: Both are bitwise deterministic on any one machine, which is precisely why this hides. Across instruction sets the weight-only build agrees to 2e-06. The dynamic build does not agree at all: on a container without AVX-512 VNNI its output collapses to roughly -1.07 for every input. The fifth window is AI-authored. It scores +2.32 on one machine and negative on the other. This is ONNX Runtime's `MatMulInteger` kernels, not anything in this pipeline. For a model that ships to browsers on unknown hardware this rules out dynamic quantization by itself, before any accuracy argument. It would have produced garbage for a fraction of users, and nothing in the export path was looking for it. It also means the \"dynamic loses 4-6 points of pAUC\" figures above are the AVX-512 numbers; on AVX2 the loss is total. The plan gated on `Spearman >= 0.995`. Only the 270MB build reaches that; the 136.7MB build reaches 0.983 while dropping 0.0008 of pAUC. Rather than relax the number to admit the preferred variant, the gate now measures what Spearman was standing in for: Spearman summarises the entire score range, nearly all of which sits far from the threshold and cannot change any verdict. The flip rate measures the same concern directly and at the right place.",
+      "chunks": [
+        {
+          "text": "The first export produced a complete, checksummed six-file bundle containing a model that had lost twenty points of AUROC. It was assembled because nothing in the export path scores the model, and the release gate that would have caught it was specified, written into the plan, and never implemented. The fp32 parity result is the one worth dwelling on. It is genuinely good, and it proves the export is faithful -- the ModernBERT sliding-window mask did not constant-fold, which was the failure this project spent the most design effort guarding against. It says nothing whatever about the quantized graph, because it was measured on the fp32 graph, before quantization ran. Two variables moved between the 0.9939 and the 0.7849: the artifact (PyTorch to int8) and the split (val to calibration/test). Scoring both full splits with PyTorch separated them -- test at 0.9939 is if anything higher than val, so the split is not the explanation and the model is intact. That leaves quantization, and the first hypothesis was wrong. `onnx_export.py` named the embedding `Gather` in its own module docstring as \"the riskiest step in this pipeline for a detector whose signal is lexical\", so the `Gather` was the obvious suspect. Measured, it is not: leaving the embedding table entirely in fp32 scores 0.8027 against the 0.8103 that quantizes it. The docstring read as evidence because it was confidently written, but nothing in it had been measured. 1. `extra_options={\"MatMulConstBOnly\": False}`. ONNX Runtime defaults this to True, restricting quantization to MatMuls with a constant B operand -- the weights. False also quantizes the activation-by-activation products inside attention, Q.K^T and attn.V, which hold no weights and degrade badly in int8. Fixing it recovered 17 points of AUROC. The node count had said so all along: ModernBERT-base has 22 x 4 weight MatMuls plus a two-MatMul head, so 90 is correct and the export produced 136. The assertion was `>= 80` with no ceiling, so quantizing half again too much looked exactly like quantizing correctly. 2. Dynamic quantization of *activations*, which no op list can switch off. This is what still cost 4-6 points of pAUC afterwards, and it is why the fix is weight-only quantization rather than a better dynamic recipe. See the recipe table below. Recorded for completeness. Every number below is a property of a model that does not work, and none of it should be carried forward.",
+          "words": 397,
+          "logit": 2.913518190383911
+        },
+        {
+          "text": "A recall of 2.9% at the shipped threshold is the model failing, not the threshold being conservative. The oracle gap of 0.203 was the number this project most wanted -- the empirical cost of scope.md 4.4's decision to ship one global threshold -- and it cannot be read off a broken artifact. It remains unmeasured. A missing comparison is a failure, not a pass. That is the specific way the original path was wrong: absence of evidence read as evidence of correctness. The split between the two families is the whole story. `quantize_dynamic` compresses weights *and* rescales activations per tensor at runtime; `MatMulNBits` compresses only the constant weight operands and leaves activations in float. Weight-only is lossless here -- pAUC marginally above fp32 -- and no dynamic recipe comes close, whatever is done with per-channel scales, reduce_range, or the embedding table. Two sweeps over identical inputs returned AUROC 0.978 and 0.550 for the same dynamic recipe, from files identical in size, node counts and every flag. Scoring the same 400 rows twice per container across three containers explains it: Both are bitwise deterministic on any one machine, which is precisely why this hides. Across instruction sets the weight-only build agrees to 2e-06. The dynamic build does not agree at all: on a container without AVX-512 VNNI its output collapses to roughly -1.07 for every input. The fifth window is AI-authored. It scores +2.32 on one machine and negative on the other. This is ONNX Runtime's `MatMulInteger` kernels, not anything in this pipeline. For a model that ships to browsers on unknown hardware this rules out dynamic quantization by itself, before any accuracy argument. It would have produced garbage for a fraction of users, and nothing in the export path was looking for it. It also means the \"dynamic loses 4-6 points of pAUC\" figures above are the AVX-512 numbers; on AVX2 the loss is total. The plan gated on `Spearman >= 0.995`. Only the 270MB build reaches that; the 136.7MB build reaches 0.983 while dropping 0.0008 of pAUC. Rather than relax the number to admit the preferred variant, the gate now measures what Spearman was standing in for: Spearman summarises the entire score range, nearly all of which sits far from the threshold and cannot change any verdict. The flip rate measures the same concern directly and at the right place.",
+          "words": 391,
+          "logit": 3.613548755645752
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9817587662265801,
+          0.992919430291863
+        ],
+        "chunk_p_penalized": [
+          0.9817587662265801,
+          0.992919430291863
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 1,
+            "words": 788,
+            "score": 0.9886202865764878,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "export-verification.md",
+      "text": "Run against a real ModernBERT-base checkpoint saved through the same strip-and-save path training uses. Numbers below are measured, not projected. Optimum emits a warning that opset 18 is its recommended minimum for ModernBERT. The export succeeds at 17 and parity below is 5e-06, so 17 is kept -- it is what scope.md specifies and it is the more conservative choice for ONNX Runtime Web's WASM kernels. ModernBERT builds its sliding-window attention mask from `torch.arange(seq_len)`, which is a constant-folding candidate under the tracer. Had it folded, the mask would be frozen at the export length and logits would be silently wrong at every *other* length -- a failure a 512-only check cannot see. Flat across every length, ~200x inside tolerance. The dynamic sequence axis is real, so a 215-token chunk costs what a 215-token chunk should rather than being padded to 512. 150.7 MB confirms the correction in `export/onnx_export.py`: scope.md's ~150 MB target is reachable only with the embedding `Gather` included. Quantizing `MatMul` alone would have left the 155 MB embedding table at fp32 and landed near 266 MB. The node counts matter as an assertion rather than a statistic. There is a known ONNX Runtime regression in which transformer MatMuls silently stop being quantized and the output file comes back the same size as the input, raising nothing. 136 `MatMulInteger` nodes against a floor of 80 is what proves it actually happened. Accuracy impact of quantizing the embedding table is not measured here -- that is gated on the calibration split against a trained checkpoint, since a randomly initialised head would say nothing useful.",
+      "chunks": [
+        {
+          "text": "Run against a real ModernBERT-base checkpoint saved through the same strip-and-save path training uses. Numbers below are measured, not projected. Optimum emits a warning that opset 18 is its recommended minimum for ModernBERT. The export succeeds at 17 and parity below is 5e-06, so 17 is kept -- it is what scope.md specifies and it is the more conservative choice for ONNX Runtime Web's WASM kernels. ModernBERT builds its sliding-window attention mask from `torch.arange(seq_len)`, which is a constant-folding candidate under the tracer. Had it folded, the mask would be frozen at the export length and logits would be silently wrong at every *other* length -- a failure a 512-only check cannot see. Flat across every length, ~200x inside tolerance. The dynamic sequence axis is real, so a 215-token chunk costs what a 215-token chunk should rather than being padded to 512. 150.7 MB confirms the correction in `export/onnx_export.py`: scope.md's ~150 MB target is reachable only with the embedding `Gather` included. Quantizing `MatMul` alone would have left the 155 MB embedding table at fp32 and landed near 266 MB. The node counts matter as an assertion rather than a statistic. There is a known ONNX Runtime regression in which transformer MatMuls silently stop being quantized and the output file comes back the same size as the input, raising nothing. 136 `MatMulInteger` nodes against a floor of 80 is what proves it actually happened. Accuracy impact of quantizing the embedding table is not measured here -- that is gated on the calibration split against a trained checkpoint, since a randomly initialised head would say nothing useful.",
+          "words": 264,
+          "logit": 2.682353973388672
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9751426644374623
+        ],
+        "chunk_p_penalized": [
+          0.9751426644374623
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 264,
+            "score": 0.9751426644374623,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "extension-latency.md",
+      "text": "The scope.md 10 budget was an estimate. These are measurements, and they change one conclusion: **the shipped artifact runs about 2x slower in the browser than the estimate assumed, for a reason that is structural rather than incidental.** Measured with `extension/scripts/bench-ort.mjs`, `onnxruntime-web` 1.29.0, WASM execution provider with SIMD, on an Intel Core Ultra 9 285H (16 cores, 64 GB), Node 24. Median of 3 runs after a warm-up, synthetic token ids at fixed sequence lengths -- cost depends on sequence length, not token identity. ONNX Runtime's MLAS assigns `QNBitGemmDispatch` only under `MLAS_TARGET_AMD64`, `MLAS_TARGET_ARM64`, `MLAS_TARGET_RISCV64` and `MLAS_TARGET_LARCH64` (`onnxruntime/core/mlas/lib/platform.cpp`). **There is no WASM branch**, although `MLAS_TARGET_WASM_SIMD` is a real target used elsewhere in `mlasi.h`. So in a WASM build `MlasIsQNBitGemmAvailable()` returns false (`mlas/lib/qnbitgemm.cpp:122`), `PrePack` returns early without packing, and every one of the artifact's 89 `MatMulNBits` nodes falls through to `MatMulNBits<float>::ComputeBUnpacked` (`contrib_ops/cpu/quantization/matmul_nbits.cc:1192`). That path allocates `K x N` floats, dequantizes the entire weight matrix, transposes it into a second `K x N` buffer, and runs a plain SGEMM -- per node, per forward pass. Session creation is 0.6 s from bytes already in memory, comfortably inside the \"low single-digit seconds\" that scope.md 6.2's Firefox warm-restore path assumes. Resident set is 553-657 MB across *every* configuration measured, `MatMulInteger` included. It tracks the ORT WASM heap for a ~150 MB model, not the dequantize fallback, so it is not an argument for changing recipe. It is roughly 2x the ~250 MB scope.md 10 projects, and it is resident in the Chrome offscreen document or the Firefox event page for as long as the session lives. Because the faster op family cannot be made accurate. From `quantization_sweep.json`, pAUC drop against the 0.01 release gate in `export/gates.py`: No dynamic recipe comes within 4x of the accuracy gate, and `export-r1.md` separately disqualifies the whole family for non-portability across instruction sets. Trading four points of pAUC for 2x latency is not a trade this project makes -- scope.md 1 puts false flags on human text first. **The 2x is accepted and mitigated in the extension instead.** Mitigations, in scope.md 10's own order of effect: viewport-first queue so on-screen text scores first, the content-keyed score cache so syndicated and revisited text is scored once, and capping `max_length`. Note the third knob is weaker than it looks here: the median chunk is 215 tokens, so a 256 cap only trims the tail.",
+      "chunks": [
+        {
+          "text": "The scope.md 10 budget was an estimate. These are measurements, and they change one conclusion: **the shipped artifact runs about 2x slower in the browser than the estimate assumed, for a reason that is structural rather than incidental.** Measured with `extension/scripts/bench-ort.mjs`, `onnxruntime-web` 1.29.0, WASM execution provider with SIMD, on an Intel Core Ultra 9 285H (16 cores, 64 GB), Node 24. Median of 3 runs after a warm-up, synthetic token ids at fixed sequence lengths -- cost depends on sequence length, not token identity. ONNX Runtime's MLAS assigns `QNBitGemmDispatch` only under `MLAS_TARGET_AMD64`, `MLAS_TARGET_ARM64`, `MLAS_TARGET_RISCV64` and `MLAS_TARGET_LARCH64` (`onnxruntime/core/mlas/lib/platform.cpp`). **There is no WASM branch**, although `MLAS_TARGET_WASM_SIMD` is a real target used elsewhere in `mlasi.h`. So in a WASM build `MlasIsQNBitGemmAvailable()` returns false (`mlas/lib/qnbitgemm.cpp:122`), `PrePack` returns early without packing, and every one of the artifact's 89 `MatMulNBits` nodes falls through to `MatMulNBits<float>::ComputeBUnpacked` (`contrib_ops/cpu/quantization/matmul_nbits.cc:1192`). That path allocates `K x N` floats, dequantizes the entire weight matrix, transposes it into a second `K x N` buffer, and runs a plain SGEMM -- per node, per forward pass. Session creation is 0.6 s from bytes already in memory, comfortably inside the \"low single-digit seconds\" that scope.md 6.2's Firefox warm-restore path assumes. Resident set is 553-657 MB across *every* configuration measured, `MatMulInteger` included. It tracks the ORT WASM heap for a ~150 MB model, not the dequantize fallback, so it is not an argument for changing recipe. It is roughly 2x the ~250 MB scope.md 10 projects, and it is resident in the Chrome offscreen document or the Firefox event page for as long as the session lives. Because the faster op family cannot be made accurate. From `quantization_sweep.json`, pAUC drop against the 0.01 release gate in `export/gates.py`: No dynamic recipe comes within 4x of the accuracy gate, and `export-r1.md` separately disqualifies the whole family for non-portability across instruction sets. Trading four points of pAUC for 2x latency is not a trade this project makes -- scope.md 1 puts false flags on human text first. **The 2x is accepted and mitigated in the extension instead.** Mitigations, in scope.md 10's own order of effect: viewport-first queue so on-screen text scores first, the content-keyed score cache so syndicated and revisited text is scored once, and capping `max_length`. Note the third knob is weaker than it looks here: the median chunk is 215 tokens, so a 256 cap only trims the tail.",
+          "words": 392,
+          "logit": 3.5435585975646973
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9922135196246483
+        ],
+        "chunk_p_penalized": [
+          0.9922135196246483
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 392,
+            "score": 0.9922135196246483,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "model-sizes.md",
+      "text": "ModernBERT's embedding table appears in the ONNX graph as a `Gather`, not a `MatMul`. Quantizing `MatMul` alone therefore leaves 155 MB of embeddings at fp32: The ~150 MB the spec quotes is only reachable with the embedding `Gather` included, so that is what `export/onnx_export.py` requests. It is the riskiest step in the pipeline for a detector whose signal is lexical, so it is gated on a measured accuracy delta rather than assumed safe. The auxiliary head is attached beside the stock classifier rather than inside it, so exporting drops it without touching the AI-fraction path. Measured on random inputs in eval mode: Exactly zero, not merely within tolerance. That equality is the whole guarantee that the exported model scores identically to the trained one. 48 parameter groups, learning rates spanning 2.66e-06 (embeddings) to 3.00e-05 (heads) at base 3e-5 with decay 0.9 over 22 layers.",
+      "chunks": [
+        {
+          "text": "ModernBERT's embedding table appears in the ONNX graph as a `Gather`, not a `MatMul`. Quantizing `MatMul` alone therefore leaves 155 MB of embeddings at fp32: The ~150 MB the spec quotes is only reachable with the embedding `Gather` included, so that is what `export/onnx_export.py` requests. It is the riskiest step in the pipeline for a detector whose signal is lexical, so it is gated on a measured accuracy delta rather than assumed safe. The auxiliary head is attached beside the stock classifier rather than inside it, so exporting drops it without touching the AI-fraction path. Measured on random inputs in eval mode: Exactly zero, not merely within tolerance. That equality is the whole guarantee that the exported model scores identically to the trained one. 48 parameter groups, learning rates spanning 2.66e-06 (embeddings) to 3.00e-05 (heads) at base 3e-5 with decay 0.9 over 22 layers.",
+          "words": 144,
+          "logit": 3.314608335494995
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9893800888872034
+        ],
+        "chunk_p_penalized": [
+          0.9893800888872034
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 144,
+            "score": 0.9893800888872034,
+            "flagged": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "training-r1.md",
+      "text": "Scored with the PyTorch checkpoint over the **complete** split, not a subsample. FPR counts only `ai_fraction == 0.0` windows; recall counts only `>= 0.7`; the mid-band is excluded from both (264 windows in val, 418 in test). Test scores slightly *above* val, which is the expected direction only because nothing distinguishes the two: `held_out_domains_per_genre` is configured at 10 and enforced nowhere, so no domains are reserved test-only and the test split does not currently measure host-template memorization. Treat test here as a second val. An earlier version of this file reported AUROC 0.9928 / pAUC 0.9632 / FPR@90 0.0014 under the heading \"Validation results\". Those came from `evaluate()`, which defaulted to 40 batches against an unshuffled loader -- the same ~1,280 windows in `doc_id` order on every call, 3.5% of val, selected by filename. The checkpoint was selected on that slice too. The slice turned out to be close to unbiased: its genre mix tracks the split's, and its AUROC of 0.9946 sits near the full split's 0.9924. So the defect cost accuracy of reporting rather than accuracy of the model, and the headline numbers above are within 0.001 of what was originally claimed. It was still a measurement of the wrong object, and it is fixed: `cfg.eval_windows` now draws a fixed random subsample. 0.072 against a floor of zero. This is the number to read rather than raw loss -- soft-target BCE has a floor equal to the mean target entropy, so with mixed-authorship rows the raw loss plateaus well above zero and never approaches it, which looks identical to a broken run. All well below half. The balanced sampler equalises the rate inside each genre to 0.50 while leaving genre marginals untouched, so the model does not see these rates. What the sampler cannot fix is a genre with too few distinct minority-class windows to reweight, which is what `check_split_integrity` now asserts. The corpus is also not the one the config describes. `genre_targets` asks for 75k-120k windows per genre and is read by nothing, so academic prose reached 237k against a target of 90k while technical_docs reached 14k against 75k; the genre-share cap was computed against the pre-cap total and so did not bind at the configured 0.25. Both are fixed in code but not in this corpus -- these numbers come from v3 as built.",
+      "chunks": [
+        {
+          "text": "Scored with the PyTorch checkpoint over the **complete** split, not a subsample. FPR counts only `ai_fraction == 0.0` windows; recall counts only `>= 0.7`; the mid-band is excluded from both (264 windows in val, 418 in test). Test scores slightly *above* val, which is the expected direction only because nothing distinguishes the two: `held_out_domains_per_genre` is configured at 10 and enforced nowhere, so no domains are reserved test-only and the test split does not currently measure host-template memorization. Treat test here as a second val. An earlier version of this file reported AUROC 0.9928 / pAUC 0.9632 / FPR@90 0.0014 under the heading \"Validation results\". Those came from `evaluate()`, which defaulted to 40 batches against an unshuffled loader -- the same ~1,280 windows in `doc_id` order on every call, 3.5% of val, selected by filename. The checkpoint was selected on that slice too. The slice turned out to be close to unbiased: its genre mix tracks the split's, and its AUROC of 0.9946 sits near the full split's 0.9924. So the defect cost accuracy of reporting rather than accuracy of the model, and the headline numbers above are within 0.001 of what was originally claimed. It was still a measurement of the wrong object, and it is fixed: `cfg.eval_windows` now draws a fixed random subsample. 0.072 against a floor of zero. This is the number to read rather than raw loss -- soft-target BCE has a floor equal to the mean target entropy, so with mixed-authorship rows the raw loss plateaus well above zero and never approaches it, which looks identical to a broken run. All well below half. The balanced sampler equalises the rate inside each genre to 0.50 while leaving genre marginals untouched, so the model does not see these rates. What the sampler cannot fix is a genre with too few distinct minority-class windows to reweight, which is what `check_split_integrity` now asserts. The corpus is also not the one the config describes. `genre_targets` asks for 75k-120k windows per genre and is read by nothing, so academic prose reached 237k against a target of 90k while technical_docs reached 14k against 75k; the genre-share cap was computed against the pre-cap total and so did not bind at the configured 0.25. Both are fixed in code but not in this corpus -- these numbers come from v3 as built.",
+          "words": 388,
+          "logit": 3.5017294883728027
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9917587480937737
+        ],
+        "chunk_p_penalized": [
+          0.9917587480937737
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 388,
+            "score": 0.9917587480937737,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "scope.md",
+      "text": "Browser extension for Chrome and Firefox, built from one codebase, that visually de-emphasizes page text likely to be AI-generated, using a self-trained ModernBERT-base classifier run in-extension via ONNX Runtime Web. Single release per browser; the only artifact updated after release is the model bundle. Shared code units: content script, `host.js` (cache, queue, worker management), inference worker, options page, first-run page. Browser-specific: ~50 lines of router glue and one manifest with both background keys. ModernBERT-base (149M params, 22 layers, alternating local/global attention, GeGLU). English + code pretraining only; non-English text is gated out rather than scored. Inference sequence length fixed at **512 tokens** (tokenizer `max_length` at export). The 8192 native context is unused; attention cost is the latency budget in WASM. Regression target = AI fraction ∈ [0, 1]. Binary AI/human label derived at ≥ 0.7 for evaluation. Regression head gives the UI a continuous dial without retraining. The fraction is **measured, never requested**: a model asked to \"edit 30% of this\" will not comply, so mixed documents are built by splicing aligned human and AI variants and the label is computed from what was actually emitted. Documents that are neither pure human nor pure AI carry **character spans** marking the AI-authored regions. Windows recompute their own fraction from those spans (§4.3). The corpus also contains documents at fractions near 0.05, without which §1's non-goal — not flagging lightly AI-edited human prose — is unenforceable rather than merely unmet. Train on the unit scored at inference: random windows cut at sentence boundaries, 40–400 words, weighted toward 80–250 words. Short windows are kept so the model learns low confidence on them rather than confident noise. Both cut on the same sentence splitter; that is what keeps the training distribution aligned with what is actually scored. At ~1.25–1.35 BPE tokens per word, a 400-word window is ~500–540 tokens, so the 512-token limit truncates the longest windows. That is the common case at the top of the range, not an edge case; `n_tokens` and `truncated` are recorded per window. Four splits, not three: **train / val / calibration / test**. Calibration selects the threshold; test verifies it. They are disjoint at the group level, and the grouping key is the near-duplicate cluster first and the registered domain second — press releases are syndicated verbatim across dozens of domains, so domain-level grouping alone leaks. RAID's rows are whole documents, so the eval runs the full pipeline — chunk → score → §8 aggregation → document score. That is the honest comparison and it is also the only exercise of the aggregation code against text we did not generate. RAID's human side overlaps common corpora (Reddit via Webis TL;DR-17, arXiv abstracts, Wikipedia, BBC news), so it is a contamination hazard as well as an eval. Those sources are excluded from the harvest outright, and the remaining corpus is filtered against RAID by near-duplicate and n-gram overlap. The removal count is reported, since that is what makes the external number credible. Regenerate the AI side with current models when warranted; retrain, recalibrate, re-export, bump the model version string. Neither extension changes. Cached scores are keyed on model version, so a new model invalidates old scores automatically on both browsers. 1. Load checkpoint with `attn_implementation=\"eager\"` (or `sdpa`). The unpadded flash-attention path does not trace. 2. Export via Optimum: opset ≥ 17, dynamic batch and sequence axes, tokenizer `max_length=512`. 3. Verify ONNX logits vs PyTorch on ~200 samples, tolerance ~1e-3, **at several sequence lengths and batch sizes**, not only at 512. ModernBERT builds its sliding-window attention mask from `torch.arange(seq_len)`, which is a strong constant-folding candidate under the tracer. If it folds, the local mask is frozen at the export length and the model returns silently wrong logits at every *other* length — a failure a 512-only parity check cannot see. Fallbacks, in order: export with the dynamo path; patch the mask builder inside the export context; accept a static 512 axis and pad in the extension, which costs roughly 2.3× latency since typical chunks are ~215 tokens. 4. Int8 dynamic quantization (`quantize_dynamic`, **MatMul and the embedding `Gather`**). ~600 MB fp32 → ~150 MB int8. The fp32 figure is right: 149,014,272 params × 4 B = 596 MB. The int8 figure is only reachable if the embedding table is quantized too. ModernBERT's embeddings are 50368 × 768 = 38.7 M params, and they appear in the graph as a `Gather`, not a `MatMul` — quantizing MatMul alone leaves them in fp32 and lands at **266 MB**, not 150 MB. Per-tensor int8 across a 50k-row embedding table is the riskiest step in this pipeline for a detector whose signal is lexical, so it is gated on a measured accuracy delta, with fp16 embeddings (~189 MB) as the fallback if it fails. Assert the result rather than trusting it. There is a known ONNX Runtime regression in which transformer MatMuls silently stop being quantized and the output file comes back the same size as the input, with no error. The build fails if the `MatMulInteger` node count or the output size is outside the expected range. 5. Re-run calibration and per-genre FPR on the int8 model; set `t_on`/temperature from this artifact. 6. Confirm the exported `tokenizer.json` includes the `[CLS]`/`[SEP]` post-processor so browser tokenization matches training. Shipped model bundle, exactly six files: `model.onnx` (int8), `tokenizer.json`, `tokenizer_config.json`, `config.json`, `calibration.json`, `SHA256SUMS`. Provenance (run id, git sha, per-genre report, parity report, RAID numbers) is written *beside* the bundle, not inside it — the extension verifies every file in the directory against `SHA256SUMS`. Both builds come from the same source tree; the only per-browser build step is copying the correct router file and stripping unknown manifest keys if a store validator rejects them. Compact n-gram language detector (franc/cld3-class, bundled) per block. Non-English blocks are never scored. Tuned to prefer \"unknown → skip\" over misclassifying short blocks as English. This gate is not one of the coupling points and need not match the training-side detector exactly, but there is an interaction worth watching. franc is weak on short non-native English, and \"unknown → skip\" means the extension may silently never score exactly the prose §4.2 deliberately over-samples as a hard negative — trained on, never scored. `fixtures/langgate.json` asserts both that the two gates agree on acceptance, and, more importantly, that the cases where they disagree are not systematically non-native. Score units are paragraph-level blocks. Blocks over ~400 words split at sentence boundaries into ≤ 400-word chunks. Blocks 40–79 words are scored but carry a length penalty in pooling (§8). All constants below come from `calibration.json`, not from the source (§5). `eval/aggregate.py` is the reference implementation and `fixtures/aggregate.json` pins it for both languages; where the prose is ambiguous, **the fixture is the specification**. The specified +0.05 in probability space is unsafe. A ≤1% FPR operating point puts `t_on` around 0.95–0.99, where +0.05 yields a threshold above 1.0: every sparse document silently becomes unflaggable, with no error anywhere. In log-odds the bump is scale-free and cannot leave the unit interval. - **Hysteresis**: a run opens at a chunk ≥ `t_on` and extends over neighbours ≥ `t_off`. This is *spatial*, not temporal — there is no state carried between scoring passes, so re-scoring a page after a DOM mutation always yields the same result. Chrome is expected to land in the threaded row (offscreen document is cross-origin isolated via manifest); Firefox may land in either. Latency knobs, in order of effect: cap `max_length` at 256, viewport-first queue, score-cache hit rate. Fallback is a re-fine-tuned ModernBERT with 6–8 of 22 layers dropped — a model change, not an extension change. 1.5M training windows, class-balanced at 750k human and 750k AI, from ~300k human documents and ~250k AI rows. **Windows are the binding quota, not documents**: four of the eight genres are intrinsically short-form, so real documents yield ~3 windows each rather than the 5 a naive count assumes. A battery of deliberately weak baselines runs on the finished corpus and **must pass before any training run starts**. It uses pass *bands*, not ceilings: a bag-of-words model at 0.99 AUC means the corpus is trivially separable and the real number will not survive contact with the web, but the same model at 0.55 also means something is wrong, because AI text genuinely does carry lexical signatures and destroying them means the two classes were preprocessed differently. The sharpest single check is transfer to held-out generators. The generation harness is shared across every model; a model's writing style is not. If a bag-of-words probe transfers to unseen generators as well as it does in-distribution, it has learned our pipeline rather than AI writing.",
+      "chunks": [
+        {
+          "text": "Browser extension for Chrome and Firefox, built from one codebase, that visually de-emphasizes page text likely to be AI-generated, using a self-trained ModernBERT-base classifier run in-extension via ONNX Runtime Web. Single release per browser; the only artifact updated after release is the model bundle. Shared code units: content script, `host.js` (cache, queue, worker management), inference worker, options page, first-run page. Browser-specific: ~50 lines of router glue and one manifest with both background keys. ModernBERT-base (149M params, 22 layers, alternating local/global attention, GeGLU). English + code pretraining only; non-English text is gated out rather than scored. Inference sequence length fixed at **512 tokens** (tokenizer `max_length` at export). The 8192 native context is unused; attention cost is the latency budget in WASM. Regression target = AI fraction ∈ [0, 1]. Binary AI/human label derived at ≥ 0.7 for evaluation. Regression head gives the UI a continuous dial without retraining. The fraction is **measured, never requested**: a model asked to \"edit 30% of this\" will not comply, so mixed documents are built by splicing aligned human and AI variants and the label is computed from what was actually emitted. Documents that are neither pure human nor pure AI carry **character spans** marking the AI-authored regions. Windows recompute their own fraction from those spans (§4.3). The corpus also contains documents at fractions near 0.05, without which §1's non-goal — not flagging lightly AI-edited human prose — is unenforceable rather than merely unmet. Train on the unit scored at inference: random windows cut at sentence boundaries, 40–400 words, weighted toward 80–250 words. Short windows are kept so the model learns low confidence on them rather than confident noise. Both cut on the same sentence splitter; that is what keeps the training distribution aligned with what is actually scored. At ~1.25–1.35 BPE tokens per word, a 400-word window is ~500–540 tokens, so the 512-token limit truncates the longest windows. That is the common case at the top of the range, not an edge case; `n_tokens` and `truncated` are recorded per window. Four splits, not three: **train / val / calibration / test**. Calibration selects the threshold; test verifies it. They are disjoint at the group level, and the grouping key is the near-duplicate cluster first and the registered domain second — press releases are syndicated verbatim across dozens of domains, so domain-level grouping alone leaks.",
+          "words": 389,
+          "logit": 3.9145612716674805
+        },
+        {
+          "text": "RAID's rows are whole documents, so the eval runs the full pipeline — chunk → score → §8 aggregation → document score. That is the honest comparison and it is also the only exercise of the aggregation code against text we did not generate. RAID's human side overlaps common corpora (Reddit via Webis TL;DR-17, arXiv abstracts, Wikipedia, BBC news), so it is a contamination hazard as well as an eval. Those sources are excluded from the harvest outright, and the remaining corpus is filtered against RAID by near-duplicate and n-gram overlap. The removal count is reported, since that is what makes the external number credible. Regenerate the AI side with current models when warranted; retrain, recalibrate, re-export, bump the model version string. Neither extension changes. Cached scores are keyed on model version, so a new model invalidates old scores automatically on both browsers. 1. Load checkpoint with `attn_implementation=\"eager\"` (or `sdpa`). The unpadded flash-attention path does not trace. 2. Export via Optimum: opset ≥ 17, dynamic batch and sequence axes, tokenizer `max_length=512`. 3. Verify ONNX logits vs PyTorch on ~200 samples, tolerance ~1e-3, **at several sequence lengths and batch sizes**, not only at 512. ModernBERT builds its sliding-window attention mask from `torch.arange(seq_len)`, which is a strong constant-folding candidate under the tracer. If it folds, the local mask is frozen at the export length and the model returns silently wrong logits at every *other* length — a failure a 512-only parity check cannot see. Fallbacks, in order: export with the dynamo path; patch the mask builder inside the export context; accept a static 512 axis and pad in the extension, which costs roughly 2.3× latency since typical chunks are ~215 tokens. 4. Int8 dynamic quantization (`quantize_dynamic`, **MatMul and the embedding `Gather`**). ~600 MB fp32 → ~150 MB int8. The fp32 figure is right: 149,014,272 params × 4 B = 596 MB. The int8 figure is only reachable if the embedding table is quantized too. ModernBERT's embeddings are 50368 × 768 = 38.7 M params, and they appear in the graph as a `Gather`, not a `MatMul` — quantizing MatMul alone leaves them in fp32 and lands at **266 MB**, not 150 MB.",
+          "words": 360,
+          "logit": 3.1293888092041016
+        },
+        {
+          "text": "Per-tensor int8 across a 50k-row embedding table is the riskiest step in this pipeline for a detector whose signal is lexical, so it is gated on a measured accuracy delta, with fp16 embeddings (~189 MB) as the fallback if it fails. Assert the result rather than trusting it. There is a known ONNX Runtime regression in which transformer MatMuls silently stop being quantized and the output file comes back the same size as the input, with no error. The build fails if the `MatMulInteger` node count or the output size is outside the expected range. 5. Re-run calibration and per-genre FPR on the int8 model; set `t_on`/temperature from this artifact. 6. Confirm the exported `tokenizer.json` includes the `[CLS]`/`[SEP]` post-processor so browser tokenization matches training. Shipped model bundle, exactly six files: `model.onnx` (int8), `tokenizer.json`, `tokenizer_config.json`, `config.json`, `calibration.json`, `SHA256SUMS`. Provenance (run id, git sha, per-genre report, parity report, RAID numbers) is written *beside* the bundle, not inside it — the extension verifies every file in the directory against `SHA256SUMS`. Both builds come from the same source tree; the only per-browser build step is copying the correct router file and stripping unknown manifest keys if a store validator rejects them. Compact n-gram language detector (franc/cld3-class, bundled) per block. Non-English blocks are never scored. Tuned to prefer \"unknown → skip\" over misclassifying short blocks as English. This gate is not one of the coupling points and need not match the training-side detector exactly, but there is an interaction worth watching. franc is weak on short non-native English, and \"unknown → skip\" means the extension may silently never score exactly the prose §4.2 deliberately over-samples as a hard negative — trained on, never scored. `fixtures/langgate.json` asserts both that the two gates agree on acceptance, and, more importantly, that the cases where they disagree are not systematically non-native. Score units are paragraph-level blocks. Blocks over ~400 words split at sentence boundaries into ≤ 400-word chunks. Blocks 40–79 words are scored but carry a length penalty in pooling (§8). All constants below come from `calibration.json`, not from the source (§5). `eval/aggregate.py` is the reference implementation and `fixtures/aggregate.json` pins it for both languages; where the prose is ambiguous, **the fixture is the specification**. The specified +0.05 in probability space is unsafe. A ≤1% FPR operating point puts `t_on` around 0.95–0.99, where +0.05 yields a threshold above 1.0: every sparse document silently becomes unflaggable, with no error anywhere.",
+          "words": 399,
+          "logit": 3.8358330726623535
+        },
+        {
+          "text": "In log-odds the bump is scale-free and cannot leave the unit interval. - **Hysteresis**: a run opens at a chunk ≥ `t_on` and extends over neighbours ≥ `t_off`. This is *spatial*, not temporal — there is no state carried between scoring passes, so re-scoring a page after a DOM mutation always yields the same result. Chrome is expected to land in the threaded row (offscreen document is cross-origin isolated via manifest); Firefox may land in either. Latency knobs, in order of effect: cap `max_length` at 256, viewport-first queue, score-cache hit rate. Fallback is a re-fine-tuned ModernBERT with 6–8 of 22 layers dropped — a model change, not an extension change. 1.5M training windows, class-balanced at 750k human and 750k AI, from ~300k human documents and ~250k AI rows. **Windows are the binding quota, not documents**: four of the eight genres are intrinsically short-form, so real documents yield ~3 windows each rather than the 5 a naive count assumes. A battery of deliberately weak baselines runs on the finished corpus and **must pass before any training run starts**. It uses pass *bands*, not ceilings: a bag-of-words model at 0.99 AUC means the corpus is trivially separable and the real number will not survive contact with the web, but the same model at 0.55 also means something is wrong, because AI text genuinely does carry lexical signatures and destroying them means the two classes were preprocessed differently. The sharpest single check is transfer to held-out generators. The generation harness is shared across every model; a model's writing style is not. If a bag-of-words probe transfers to unseen generators as well as it does in-distribution, it has learned our pipeline rather than AI writing.",
+          "words": 281,
+          "logit": 3.881763219833374
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.995298106416427,
+          0.9863593931613491,
+          0.9947662391592879,
+          0.9950834013944274
+        ],
+        "chunk_p_penalized": [
+          0.995298106416427,
+          0.9863593931613491,
+          0.9947662391592879,
+          0.9950834013944274
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 3,
+            "words": 1429,
+            "score": 0.9936214054580493,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "README.md",
+      "text": "A self-trained ModernBERT-base classifier that flags likely-AI-generated prose, plus a Chrome/Firefox extension that runs it on-device (ONNX Runtime Web) and de-emphasizes the text it flags. One repo: the model pipeline and the extension that consumes its output. training/ Python. Everything that produces a model bundle. configs/ corpus / train / export / eval configs (yaml, checked in) src/slopmarker/ corpus/ human harvest, AI generation, attack variants, mixed authorship (§4.2) data/ datasets, windowing (§4.3), genre labels, collators model/ backbone + AI-fraction head + auxiliary genre head (§4.4) export/ ONNX export, int8 quantization, PyTorch-parity check (§5) eval/ per-genre FPR, calibration/threshold selection (§4.5), RAID (§4.6) scripts/ thin CLI entry points tests/ extension/ TypeScript. One source tree, two builds (§13). src/ content/ extraction, language gate, segmentation, hashing, rendering (§7, §9) router/ chrome.ts (MV3 service worker) / firefox.ts (event page) — the only browser-specific runtime code (§6.2) host/ host.html + host.js: score cache, priority queue, worker mgmt (§6.3) worker/ ORT Web session, single dedicated Web Worker shared/ scoring & aggregation (§8), text normalization + hashing (§7.4), port protocol types, calibration loader pages/ options page, first-run page (§6.5) assets/ manifest source, bundled tokenizer, icons scripts/ build: per-browser manifest post-processing, ORT wasm copy, packaging tests/ unit e2e/ browser-driven parity checks fixtures/ Small JSON fixtures consumed by BOTH training/tests and extension/tests. This is how we prove the two sides agree (see Coupling below). The model never enters git. `data/`, `artifacts/` and `model-host/` are ignored except their READMEs, and `*.onnx` / `*.safetensors` / checkpoints are ignored everywhere. The shipped model bundle (§5) lives on a static host and is fetched at first run (§6.4). Two small files from each bundle release *are* tracked, inside `extension/src/assets/`: the tokenizer (§6.3 bundles it in the extension so browser tokenization can't drift) and `calibration.json` + `SHA256SUMS` (the extension verifies downloads against them). They are copied in from a bundle release by a `tools/` script, not hand-edited. 1. **Calibration constants.** `temperature`, `t_on`, `t_off`, `min_words` are produced by `training/` on the *quantized* artifact (§5.5) and consumed by the extension. Single source: `calibration.json`. No constant is retyped in TypeScript. 2. **Text handling parity.** `normalize()` + hashing (§7.4) and window/chunk boundaries (§4.3, §7.3) exist in Python and TypeScript. Fixtures in `fixtures/` pin the expected output of both; both test suites read the same files. 3. **Model version string.** Lives in `calibration.json`, keys the score cache (§11), and invalidates old scores on both browsers when the model is refreshed (§4.7). Python is pinned to 3.12 via `.python-version` (uv), not the 3.14 on this machine — the training stack's wheels lag. Node 24 / npm for the extension.",
+      "chunks": [
+        {
+          "text": "A self-trained ModernBERT-base classifier that flags likely-AI-generated prose, plus a Chrome/Firefox extension that runs it on-device (ONNX Runtime Web) and de-emphasizes the text it flags. One repo: the model pipeline and the extension that consumes its output. training/ Python. Everything that produces a model bundle. configs/ corpus / train / export / eval configs (yaml, checked in) src/slopmarker/ corpus/ human harvest, AI generation, attack variants, mixed authorship (§4.2) data/ datasets, windowing (§4.3), genre labels, collators model/ backbone + AI-fraction head + auxiliary genre head (§4.4) export/ ONNX export, int8 quantization, PyTorch-parity check (§5) eval/ per-genre FPR, calibration/threshold selection (§4.5), RAID (§4.6) scripts/ thin CLI entry points tests/ extension/ TypeScript. One source tree, two builds (§13). src/ content/ extraction, language gate, segmentation, hashing, rendering (§7, §9) router/ chrome.ts (MV3 service worker) / firefox.ts (event page) — the only browser-specific runtime code (§6.2) host/ host.html + host.js: score cache, priority queue, worker mgmt (§6.3) worker/ ORT Web session, single dedicated Web Worker shared/ scoring & aggregation (§8), text normalization + hashing (§7.4), port protocol types, calibration loader pages/ options page, first-run page (§6.5) assets/ manifest source, bundled tokenizer, icons scripts/ build: per-browser manifest post-processing, ORT wasm copy, packaging tests/ unit e2e/ browser-driven parity checks fixtures/ Small JSON fixtures consumed by BOTH training/tests and extension/tests. This is how we prove the two sides agree (see Coupling below). The model never enters git. `data/`, `artifacts/` and `model-host/` are ignored except their READMEs, and `*.onnx` / `*.safetensors` / checkpoints are ignored everywhere. The shipped model bundle (§5) lives on a static host and is fetched at first run (§6.4). Two small files from each bundle release *are* tracked, inside `extension/src/assets/`: the tokenizer (§6.3 bundles it in the extension so browser tokenization can't drift) and `calibration.json` + `SHA256SUMS` (the extension verifies downloads against them). They are copied in from a bundle release by a `tools/` script, not hand-edited. 1. **Calibration constants.** `temperature`, `t_on`, `t_off`, `min_words` are produced by `training/` on the *quantized* artifact (§5.5) and consumed by the extension. Single source: `calibration.json`. No constant is retyped in TypeScript. 2. **Text handling parity.** `normalize()` + hashing (§7.4) and window/chunk boundaries (§4.3, §7.3) exist in Python and TypeScript. Fixtures in `fixtures/` pin the expected output of both; both test suites read the same files.",
+          "words": 376,
+          "logit": 2.674987316131592
+        },
+        {
+          "text": "3. **Model version string.** Lives in `calibration.json`, keys the score cache (§11), and invalidates old scores on both browsers when the model is refreshed (§4.7). Python is pinned to 3.12 via `.python-version` (uv), not the 3.14 on this machine — the training stack's wheels lag. Node 24 / npm for the extension.",
+          "words": 52,
+          "logit": 3.965620994567871
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.974897218055922,
+          0.9956139307377417
+        ],
+        "chunk_p_penalized": [
+          0.974897218055922,
+          0.8221490549795321
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 1,
+            "words": 428,
+            "score": 0.930549734784792,
+            "flagged": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "README.md",
+      "text": "Small, hand-checkable, and versioned with the code — not generated at test time. The calibration constants inside `aggregate.json` are synthetic on purpose, so recalibrating the model never invalidates the extension's test suite. Model-dependent, emitted by `training/scripts/make_model_fixtures.py` against a local bundle. Both record `model_version`, and the TypeScript suite **skips** them when the local bundle is absent or a different version, since `artifacts/` never enters git: Source text for those two is prose pulled from the repo's own markdown, so they are reproducible from a checkout with no corpus access. It is scored, never labelled — these are parity oracles, not evaluation data.",
+      "chunks": [
+        {
+          "text": "Small, hand-checkable, and versioned with the code — not generated at test time. The calibration constants inside `aggregate.json` are synthetic on purpose, so recalibrating the model never invalidates the extension's test suite. Model-dependent, emitted by `training/scripts/make_model_fixtures.py` against a local bundle. Both record `model_version`, and the TypeScript suite **skips** them when the local bundle is absent or a different version, since `artifacts/` never enters git: Source text for those two is prose pulled from the repo's own markdown, so they are reproducible from a checkout with no corpus access. It is scored, never labelled — these are parity oracles, not evaluation data.",
+          "words": 101,
+          "logit": 3.90529465675354
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.8397,
+        "chunk_p": [
+          0.9952384084874257
+        ],
+        "chunk_p_penalized": [
+          0.9952384084874257
+        ],
+        "runs": [
+          {
+            "start": 0,
+            "end": 0,
+            "words": 101,
+            "score": 0.9952384084874257,
+            "flagged": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "austen-pride-and-prejudice.txt",
+      "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered as the rightful property of some one or other of their daughters. My dear Mr. Bennet, said his lady to him one day, have you heard that Netherfield Park is let at last? Mr. Bennet replied that he had not. But it is, returned she; for Mrs. Long has just been here, and she told me all about it. Mr. Bennet made no answer. Do not you want to know who has taken it? cried his wife impatiently. You want to tell me, and I have no objection to hearing it. This was invitation enough. Why, my dear, you must know, Mrs. Long says that Netherfield is taken by a young man of large fortune from the north of England; that he came down on Monday in a chaise and four to see the place, and was so much delighted with it that he agreed with Mr. Morris immediately; that he is to take possession before Michaelmas, and some of his servants are to be in the house by the end of next week. What is his name? Bingley. Is he married or single? Oh! single, my dear, to be sure! A single man of large fortune; four or five thousand a year. What a fine thing for our girls!",
+      "chunks": [
+        {
+          "text": "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered as the rightful property of some one or other of their daughters. My dear Mr. Bennet, said his lady to him one day, have you heard that Netherfield Park is let at last? Mr. Bennet replied that he had not. But it is, returned she; for Mrs. Long has just been here, and she told me all about it. Mr. Bennet made no answer. Do not you want to know who has taken it? cried his wife impatiently. You want to tell me, and I have no objection to hearing it. This was invitation enough. Why, my dear, you must know, Mrs. Long says that Netherfield is taken by a young man of large fortune from the north of England; that he came down on Monday in a chaise and four to see the place, and was so much delighted with it that he agreed with Mr. Morris immediately; that he is to take possession before Michaelmas, and some of his servants are to be in the house by the end of next week. What is his name? Bingley. Is he married or single? Oh! single, my dear, to be sure! A single man of large fortune; four or five thousand a year. What a fine thing for our girls!",
+          "words": 269,
+          "logit": -3.4894752502441406
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.870568833835598,
+        "chunk_p": [
+          0.008379402557097699
+        ],
+        "chunk_p_penalized": [
+          0.008379402557097699
+        ],
+        "runs": []
+      }
+    },
+    {
+      "name": "melville-moby-dick.txt",
+      "text": "Call me Ishmael. Some years ago, never mind how long precisely, having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people's hats off then, I account it high time to get to sea as soon as I can. This is my substitute for pistol and ball. With a philosophical flourish Cato throws himself upon his sword; I quietly take to the ship. There is nothing surprising in this. If they but knew it, almost all men in their degree, some time or other, cherish very nearly the same feelings towards the ocean with me.",
+      "chunks": [
+        {
+          "text": "Call me Ishmael. Some years ago, never mind how long precisely, having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people's hats off then, I account it high time to get to sea as soon as I can. This is my substitute for pistol and ball. With a philosophical flourish Cato throws himself upon his sword; I quietly take to the ship. There is nothing surprising in this. If they but knew it, almost all men in their degree, some time or other, cherish very nearly the same feelings towards the ocean with me.",
+          "words": 201,
+          "logit": -3.2198824882507324
+        }
+      ],
+      "expected": {
+        "t_on_effective": 0.870568833835598,
+        "chunk_p": [
+          0.012071488294174659
+        ],
+        "chunk_p_penalized": [
+          0.012071488294174659
+        ],
+        "runs": []
+      }
+    }
+  ]
+}

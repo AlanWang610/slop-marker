@@ -16,10 +16,12 @@ import * as ort from "onnxruntime-web";
 
 import { collapseWhitespace } from "../shared/normalize.js";
 import type { WorkerRequest, WorkerResponse } from "../shared/protocol.js";
+import { truncateLikeTokenizers } from "../shared/tokenize.js";
 
 let session: ort.InferenceSession | null = null;
 let tokenizer: PreTrainedTokenizer | null = null;
 let maxLength = 512;
+let sepTokenId = 0;
 
 function post(message: WorkerResponse): void {
   (self as DedicatedWorkerGlobalScope).postMessage(message);
@@ -40,6 +42,8 @@ async function init(req: Extract<WorkerRequest, { type: "init" }>): Promise<void
     JSON.parse(req.tokenizerJson),
     JSON.parse(req.tokenizerConfigJson),
   );
+
+  sepTokenId = tokenizer.sep_token_id;
 
   session = await ort.InferenceSession.create(new Uint8Array(req.model), {
     executionProviders: ["wasm"],
@@ -63,18 +67,21 @@ async function run(id: number, text: string): Promise<void> {
   }
   // collapseWhitespace is what the model was trained on (scope.md 7.4). Not
   // normalizeForHash -- folding curly quotes and em dashes would discard real signal.
-  const encoded = tokenizer(collapseWhitespace(text), {
-    truncation: true,
-    max_length: maxLength,
-  });
-
-  const ids = encoded.input_ids.data as BigInt64Array;
-  const mask = encoded.attention_mask.data as BigInt64Array;
+  //
+  // Tokenized WITHOUT transformers.js truncation, then truncated ourselves: its slicing
+  // drops the closing [SEP] that Python's tokenizers keeps. See shared/tokenize.ts.
+  const encoded = tokenizer(collapseWhitespace(text), { truncation: false });
+  const { ids, mask } = truncateLikeTokenizers(
+    Array.from(encoded.input_ids.data as BigInt64Array, Number),
+    Array.from(encoded.attention_mask.data as BigInt64Array, Number),
+    maxLength,
+    sepTokenId,
+  );
   const nTokens = ids.length;
 
   const outputs = await session.run({
-    input_ids: new ort.Tensor("int64", ids, [1, nTokens]),
-    attention_mask: new ort.Tensor("int64", mask, [1, nTokens]),
+    input_ids: new ort.Tensor("int64", BigInt64Array.from(ids, BigInt), [1, nTokens]),
+    attention_mask: new ort.Tensor("int64", BigInt64Array.from(mask, BigInt), [1, nTokens]),
   });
   const head = outputs[session.outputNames[0]!];
   if (head === undefined) {
