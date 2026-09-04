@@ -20,7 +20,7 @@ export const MODEL_VERSION = "mb-base-0.2.0-dev";
  * this file, which is how e2e/run.mjs points a build at its own throwaway local host.
  */
 declare const MODEL_HOST_OVERRIDE: string;
-export const MODEL_BASE_URL: string = MODEL_HOST_OVERRIDE || "https://github.com/OWNER/REPO/releases/download";
+export const MODEL_BASE_URL: string = MODEL_HOST_OVERRIDE || "https://github.com/AlanWang610/slop-marker/releases/download";
 
 /**
  * What is actually downloaded. Only the weights: the tokenizer and the calibration

@@ -121,6 +121,7 @@ beyond the local caches (§1, §11).
 
 ## Known gaps
 
-- **The model host is a placeholder.** `bundle-config.ts` points at
-  `https://github.com/OWNER/REPO/releases/download`. Set it with
-  `tools/sync_extension_assets.py --base-url`, and publish the bundle there.
+- **The bundle is not published yet.** `bundle-config.ts` points at
+  `https://github.com/AlanWang610/slop-marker/releases/download`, which is correct but has
+  no release on it, so a first run would 404. `tools/publish_bundle.py` is ready and dry-runs
+  clean; it needs `--yes`, which creates a **public** release.
