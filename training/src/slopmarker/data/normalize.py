@@ -17,6 +17,7 @@ Relying on it would guarantee a drift bug that only fires on scraped web text.
 from __future__ import annotations
 
 import hashlib
+import re
 import unicodedata
 
 # Every character we treat as whitespace. Nothing else counts.
@@ -109,3 +110,36 @@ def count_words(text: str) -> int:
     """
     collapsed = collapse_whitespace(text)
     return len(collapsed.split(" ")) if collapsed else 0
+
+
+# Markdown syntax, removed from both classes before windowing.
+#
+# This is not "removing model style". At inference the extension reads rendered DOM
+# text: a heading arrives as the words inside an <h2>, and bold arrives as the words
+# inside a <strong>. The literal `#` and `**` characters cannot reach the model in
+# production. Human web text is extracted the same way and so contains none of them,
+# which makes a literal asterisk an almost perfect classifier -- measured at 8x more
+# frequent in AI text than human before this ran.
+#
+# The *choice* to emphasise or to use headings survives, as word choice and as
+# structure. Only the syntax that production never sees is removed.
+_MD_HEADING = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]+", re.M)
+_MD_EMPHASIS = re.compile(r"(\*{1,3}|_{1,3})(?=\S)(.+?)(?<=\S)\1", re.S)
+_MD_BULLET = re.compile(r"^[ \t]{0,3}([-*+])[ \t]+", re.M)
+_MD_RULE = re.compile(r"^[ \t]{0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$", re.M)
+_MD_CODE_FENCE = re.compile(r"^[ \t]{0,3}```.*$", re.M)
+_MD_INLINE_CODE = re.compile(r"`([^`\n]+)`")
+_MD_LINK = re.compile(r"\[([^\]\n]+)\]\([^)\n]*\)")
+_MD_BLOCKQUOTE = re.compile(r"^[ \t]{0,3}>[ \t]?", re.M)
+
+
+def strip_markdown(text: str) -> str:
+    """Remove markdown syntax, keeping the words it wrapped."""
+    text = _MD_CODE_FENCE.sub("", text)
+    text = _MD_RULE.sub("", text)
+    text = _MD_LINK.sub(r"\1", text)
+    text = _MD_INLINE_CODE.sub(r"\1", text)
+    text = _MD_EMPHASIS.sub(r"\2", text)
+    text = _MD_HEADING.sub("", text)
+    text = _MD_BULLET.sub("", text)
+    return _MD_BLOCKQUOTE.sub("", text)

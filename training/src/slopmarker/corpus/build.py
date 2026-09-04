@@ -13,12 +13,14 @@ so a cluster is not filled with documents that are about to be removed.
 from __future__ import annotations
 
 import json
+import random
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
 from ..data.genre import GENRES, Genre, genre_id
+from ..data.normalize import strip_markdown
 from ..data.schema import DocumentRow, Split, WindowRow
 from ..data.splits import assign_split, group_key
 from ..data.windows import sample_windows
@@ -65,6 +67,13 @@ def build(root: Path, cfg: CorpusConfig, version: str, *, log: Any = print) -> d
         return stats
 
     by_id = {doc.doc_id: doc for doc in documents}
+
+    # Markdown syntax, removed from both classes. Production never sees it -- the
+    # extension reads rendered DOM text -- and human web text arrives without it, so
+    # a literal asterisk was an almost perfect classifier (8x more frequent in AI).
+    step("stripping markdown from both classes")
+    for doc in by_id.values():
+        doc.text, doc.ai_spans = _strip_markdown_keeping_spans(doc.text, doc.ai_spans)
 
     step("genre labelling")
     # 0. Genre for anything no URL rule matched, from the text alone. Text-only is
@@ -191,7 +200,8 @@ def build(root: Path, cfg: CorpusConfig, version: str, *, log: Any = print) -> d
                 )
             )
 
-    step(f"writing {len(windows)} windows")
+    windows = _cap_genre_share(windows, cfg.caps.get("max_genre_share", 1.0), cfg.corpus_seed)
+    step(f"writing {len(windows)} windows after genre cap")
     _write_windows(root, windows, version)
     stats.update(_summarize(by_id.values(), windows))
     (root / "processed" / version / "manifest.json").write_text(
@@ -199,6 +209,76 @@ def build(root: Path, cfg: CorpusConfig, version: str, *, log: Any = print) -> d
     )
     step("done")
     return stats
+
+
+def _strip_markdown_keeping_spans(
+    text: str, spans: list[tuple[int, int]] | None
+) -> tuple[str, list[tuple[int, int]] | None]:
+    """Strip markdown and move the AI spans with it.
+
+    Spans are character offsets, so stripping characters out from under them would
+    silently mislabel every window cut from a mixed document. Each segment is stripped
+    independently and the offsets are rebuilt from the resulting lengths.
+    """
+    if not spans:
+        return strip_markdown(text), None
+
+    pieces: list[tuple[str, bool]] = []
+    cursor = 0
+    for start, end in sorted(spans):
+        start, end = max(0, start), min(len(text), end)
+        if start > cursor:
+            pieces.append((text[cursor:start], False))
+        pieces.append((text[start:end], True))
+        cursor = end
+    if cursor < len(text):
+        pieces.append((text[cursor:], False))
+
+    out: list[str] = []
+    moved: list[tuple[int, int]] = []
+    position = 0
+    for piece, is_ai in pieces:
+        stripped = strip_markdown(piece)
+        if is_ai and stripped:
+            moved.append((position, position + len(stripped)))
+        out.append(stripped)
+        position += len(stripped)
+    return "".join(out), moved or None
+
+
+def _cap_genre_share(windows: list[WindowRow], max_share: float, seed: int) -> list[WindowRow]:
+    """Stop one genre dominating the corpus.
+
+    Academic prose reached 45% of windows on the first build. Its human side is dense
+    with citations, page numbers and reference markers that the AI side does not
+    reproduce, so digit and parenthesis frequency became a class signal rather than a
+    genre one. Capping the share bounds that.
+
+    Sampling is seeded and label-stratified, so the AI rate inside a capped genre is
+    preserved.
+    """
+    if not windows or max_share >= 1.0:
+        return windows
+    limit = int(len(windows) * max_share)
+    by_cell: dict[tuple[str, int], list[WindowRow]] = defaultdict(list)
+    for window in windows:
+        by_cell[(window.genre, int(window.ai_fraction >= 0.7))].append(window)
+
+    genres: dict[str, int] = defaultdict(int)
+    for (genre, _), rows in by_cell.items():
+        genres[genre] += len(rows)
+
+    rng = random.Random(seed)
+    kept: list[WindowRow] = []
+    for (genre, _), rows in sorted(by_cell.items()):
+        if genres[genre] <= limit:
+            kept.extend(rows)
+            continue
+        share = limit / genres[genre]
+        take = max(1, int(len(rows) * share))
+        kept.extend(rng.sample(rows, take))
+    kept.sort(key=lambda w: w.window_id)
+    return kept
 
 
 def _write_windows(root: Path, windows: list[WindowRow], version: str) -> None:

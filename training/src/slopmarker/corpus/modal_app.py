@@ -60,6 +60,8 @@ llm_secrets = [
 ]
 
 gen_image = _with_local(base_image.uv_pip_install("anthropic", "openai", "google-genai"))
+# The corpus gate fits logistic-regression probes, so it needs scikit-learn.
+probe_image = _with_local(base_image.uv_pip_install("scikit-learn>=1.5", "scipy>=1.14"))
 
 VOLUMES = {DATA_ROOT: volume, "/hf-cache": hf_cache}
 
@@ -203,6 +205,66 @@ def generate_shard(
     mark_done(root, "generated", cfg.short_hash, name, summary)
     volume.commit()
     return summary
+
+
+@app.function(image=probe_image, volumes=VOLUMES, cpu=8.0, memory=32768, timeout=2 * 3600)
+def probe_corpus(version: str, sample: int = 6000) -> dict[str, Any]:
+    """Run the corpus gate. No training run should start until this passes."""
+    import json
+    import random
+    from pathlib import Path
+
+    from slopmarker.data.dataset import load_windows
+    from slopmarker.eval.shortcut_probe import gate, run_probes
+
+    volume.reload()
+    root = Path(DATA_ROOT)
+    train_rows = load_windows(root, version, "train")
+    test_rows = load_windows(root, version, "test")
+    if not train_rows or not test_rows:
+        return {"error": "no windows", "train": len(train_rows), "test": len(test_rows)}
+
+    rng = random.Random(0)
+    rng.shuffle(train_rows)
+    rng.shuffle(test_rows)
+    train_rows = train_rows[:sample]
+    test_rows = test_rows[: sample // 2]
+
+    def texts_labels(rows: list[Any]) -> tuple[list[str], list[int]]:
+        return [r.text for r in rows], [int(r.ai_fraction >= 0.7) for r in rows]
+
+    tr_x, tr_y = texts_labels(train_rows)
+    te_x, te_y = texts_labels(test_rows)
+    # Held-out generators plus human rows: the transfer probe needs both classes.
+    held = [r for r in test_rows if r.generator in HELD_OUT_NAMES or r.doc_class == "human"]
+    ho_x, ho_y = texts_labels(held)
+
+    results = run_probes(tr_x, tr_y, te_x, te_y, heldout_texts=ho_x, heldout_labels=ho_y)
+    passed, failures = gate(results)
+    report = {
+        "version": version,
+        "passed": passed,
+        "n_train": len(tr_x),
+        "n_test": len(te_x),
+        "n_heldout": len(ho_x),
+        "probes": [
+            {
+                "name": r.name,
+                "auc": r.auc,
+                "low": r.low,
+                "high": r.high,
+                "passed": r.passed,
+                "note": r.note,
+            }
+            for r in results
+        ],
+        "failures": failures,
+    }
+    out = root / "processed" / version
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "shortcut_probe.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    volume.commit()
+    return report
 
 
 @app.function(image=image, volumes=VOLUMES, cpu=8.0, memory=65536, timeout=4 * 3600)

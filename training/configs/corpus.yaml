@@ -67,6 +67,10 @@ decontamination:
 # No single source may dominate a genre, and no near-duplicate cluster may contribute
 # more than a handful of documents.
 caps:
+  # Academic prose came out at 45% of windows on the first build, and its human
+  # side is dense with citations and page numbers that the AI side does not
+  # reproduce -- which turns digit and parenthesis frequency into a class signal.
+  max_genre_share: 0.25
   max_host_fraction_per_genre: 0.005
   max_source_fraction: 0.35
   max_documents_per_cluster: 3

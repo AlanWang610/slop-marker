@@ -189,3 +189,40 @@ class TestMixing:
         assert sum(1 for d in draws if d < 0.15) / len(draws) > 0.10
         assert sum(1 for d in draws if 0.5 <= d <= 0.9) / len(draws) > 0.25
         assert all(0.0 < d < 1.0 for d in draws)
+
+
+class TestMarkdownStripPreservesSpans:
+    """Stripping characters out from under AI spans would mislabel every window cut
+    from a mixed document, silently."""
+
+    def test_spans_still_point_at_ai_text(self) -> None:
+        from slopmarker.corpus.build import _strip_markdown_keeping_spans
+
+        human = "Plain human paragraph without any markup at all. "
+        ai = "## Heading\n\nSome **emphatic** machine text here."
+        text = human + ai
+        spans = [(len(human), len(text))]
+        new_text, new_spans = _strip_markdown_keeping_spans(text, spans)
+
+        assert new_spans is not None
+        covered = new_text[new_spans[0][0] : new_spans[0][1]]
+        assert "machine text" in covered
+        assert "human paragraph" not in covered
+        assert "**" not in new_text
+        assert "##" not in new_text
+
+    def test_offsets_are_within_the_new_text(self) -> None:
+        from slopmarker.corpus.build import _strip_markdown_keeping_spans
+
+        text = "- bullet one\n\n**bold** middle\n\n## tail heading"
+        new_text, new_spans = _strip_markdown_keeping_spans(text, [(14, 28)])
+        assert new_spans is not None
+        for start, end in new_spans:
+            assert 0 <= start < end <= len(new_text)
+
+    def test_no_spans_is_a_plain_strip(self) -> None:
+        from slopmarker.corpus.build import _strip_markdown_keeping_spans
+
+        out, spans = _strip_markdown_keeping_spans("## Title\n\n**bold**", None)
+        assert spans is None
+        assert out.strip() == "Title\n\nbold"
