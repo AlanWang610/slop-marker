@@ -744,3 +744,104 @@ def quantization_sweep(
     )
     volume.commit()
     return report
+
+
+@app.function(
+    image=export_image,
+    cpu=16.0,
+    memory=65536,
+    volumes=VOLUMES,
+    secrets=[hf_secret],
+    timeout=2 * 3600,
+)
+def determinism_check(run_id: str, version: str, limit: int = 400) -> dict[str, Any]:
+    """Score the same rows twice per artifact, and report the CPU it ran on.
+
+    Two sweeps over identical inputs returned AUROC 0.978 and 0.550 for the same
+    dynamic-quantization recipe, from files identical in size and node counts. Either
+    the int8 kernels are nondeterministic or they differ by host instruction set. For a
+    model that ships to thousands of browsers, an artifact whose scores depend on the
+    machine is unusable whatever its pAUC, so this measures it rather than assuming.
+
+    Run it more than once to compare across containers; within a container, two passes
+    over the same rows must agree bitwise.
+    """
+    import hashlib
+    import json
+    import platform
+    import subprocess
+    from pathlib import Path
+
+    import numpy as np
+    import onnxruntime as ort
+    from transformers import AutoTokenizer
+
+    from slopmarker.data.dataset import load_windows
+    from slopmarker.data.normalize import collapse_whitespace
+    from slopmarker.export.onnx_export import quantize_int8, quantize_mixed
+
+    volume.reload()
+    root = Path(DATA_ROOT)
+    ckpt = root / "artifacts" / "runs" / run_id / "best"
+    export_dir = root / "artifacts" / "export" / run_id
+    fp32 = export_dir / "model.onnx"
+
+    rows = load_windows(root, version, "test")[:limit]
+    texts = [collapse_whitespace(r.text) for r in rows]
+    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+
+    try:
+        flags = subprocess.run(
+            ["lscpu"], capture_output=True, text=True, timeout=30, check=False
+        ).stdout
+        isa = sorted(
+            f for f in ("avx512f", "avx512_vnni", "avx2", "avx_vnni") if f in flags.lower()
+        )
+        model_name = next(
+            (ln.split(":", 1)[1].strip() for ln in flags.splitlines() if "Model name" in ln), "?"
+        )
+    except Exception:  # lscpu is not guaranteed present
+        isa, model_name = [], "?"
+
+    def score(path: Path) -> np.ndarray:
+        session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        out: list[float] = []
+        for start in range(0, len(texts), 32):
+            enc = tokenizer(
+                texts[start : start + 32],
+                padding=True,
+                truncation=True,
+                max_length=512,
+                return_tensors="np",
+            )
+            logits = session.run(
+                None,
+                {
+                    "input_ids": enc["input_ids"].astype(np.int64),
+                    "attention_mask": enc["attention_mask"].astype(np.int64),
+                },
+            )[0]
+            out.extend(float(v) for v in np.asarray(logits).reshape(-1))
+        return np.array(out, dtype=np.float64)
+
+    recipes = {
+        "mix_e8_emb4": lambda p: quantize_mixed(fp32, p, encoder_bits=8, embedding_bits=4),
+        "dyn_weights_gather_per_channel": lambda p: quantize_int8(
+            fp32, p, quantize_embeddings=True, per_channel=True, const_b_only=True
+        ),
+    }
+    results: dict[str, Any] = {"cpu": model_name, "isa": isa, "node": platform.node()}
+    for name, build in recipes.items():
+        path = export_dir / f"determinism.{name}.onnx"
+        build(path)
+        first, second = score(path), score(path)
+        results[name] = {
+            "within_container_max_diff": float(np.max(np.abs(first - second))),
+            "logits_sha256": hashlib.sha256(first.tobytes()).hexdigest()[:16],
+            "mean_logit": float(first.mean()),
+            "first_five": [round(v, 6) for v in first[:5]],
+        }
+        print(f"{name}: {json.dumps(results[name])}")
+        path.unlink(missing_ok=True)
+    print(f"cpu={model_name} isa={isa}")
+    return results
