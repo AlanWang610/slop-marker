@@ -994,8 +994,13 @@ def document_eval(
         scanned = 0
         for row in stream:
             scanned += 1
-            if scanned > limit * 400:
+            # RAID train is ~6M rows in domain-ordered blocks, so reaching the eighth
+            # domain means scanning most of the file. A cap of limit*400 stopped after
+            # two domains and reported them as RAID.
+            if scanned > 8_000_000:
                 break
+            if scanned % 500_000 == 0:
+                print(f"  scanned {scanned}, domains so far: {sorted({d for d, _, _ in cells})}")
             is_ai = row["model"] != "human"
             attack = row.get("attack") or "none"
             key = (row.get("domain", "unknown"), is_ai, attack != "none")
@@ -1080,10 +1085,22 @@ def document_eval(
         flagged = sum(r["flagged"] for r in human_rows)
         report["doc_level_fpr_upper"] = clopper_pearson_upper(flagged, len(human_rows))
     if human_rows and ai_rows:
-        report["doc_auroc"] = auroc(
-            np.array([r["max_chunk_p"] for r in human_rows]),
-            np.array([r["max_chunk_p"] for r in ai_rows]),
-        )
+        human_scores = np.array([r["max_chunk_p"] for r in human_rows])
+        ai_scores = np.array([r["max_chunk_p"] for r in ai_rows])
+        report["doc_auroc"] = auroc(human_scores, ai_scores)
+
+        # Recall at a threshold chosen on *this* source's human distribution rather
+        # than ours. The shipped t_on is calibrated against our corpus, where AI text
+        # sits near a probability of 0.96; on a source whose AI scores lower, the same
+        # threshold buys a false-positive rate of zero at a recall nobody wants. This
+        # separates "the model cannot rank these" from "the operating point does not
+        # transfer", and 5% FPR is also RAID's own leaderboard metric.
+        for target in (0.01, 0.05):
+            threshold = float(np.quantile(human_scores, 1.0 - target))
+            report[f"recall_at_{int(target * 100)}pct_fpr_local"] = float(
+                (ai_scores > threshold).mean()
+            )
+            report[f"threshold_at_{int(target * 100)}pct_fpr_local"] = threshold
         report["doc_auroc_run_score"] = auroc(
             np.array([r["max_run_score"] for r in human_rows]),
             np.array([r["max_run_score"] for r in ai_rows]),
