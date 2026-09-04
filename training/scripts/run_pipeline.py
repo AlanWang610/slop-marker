@@ -77,7 +77,11 @@ def main() -> None:
     parser.add_argument("--stage", required=True, choices=["gate", "train", "export"])
     parser.add_argument("--version", default="v1")
     parser.add_argument("--run-id", default="run1")
-    parser.add_argument("--bundle-version", default="mb-base-0.1.0-dev")
+    # No default. It was mb-base-0.1.0-dev, which has been withdrawn -- there is no bundle
+    # and no release for it -- so exporting without the flag assembled an artifact under a
+    # dead version and overwrote that version's calibration report. A bundle version is an
+    # identity, and naming it is the one thing an export must not guess.
+    parser.add_argument("--bundle-version")
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--eval-every", type=int)
@@ -97,6 +101,8 @@ def main() -> None:
         }
         train(args.version, args.run_id, overrides)
     else:
+        if args.bundle_version is None:
+            parser.error("--bundle-version is required for --stage export")
         export(args.version, args.run_id, args.bundle_version)
 
 
