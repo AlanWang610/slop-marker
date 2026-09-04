@@ -89,7 +89,12 @@ ignore_missing_imports = true
 # transformers is untyped, so every attribute reached through the wrapped classifier
 # (config.hidden_size, .model, .head, .classifier) resolves to Any or to nn.Module's
 # broad __getattr__ return type. Checking this module tells us nothing true.
-module = ["slopmarker.model.modeling", "slopmarker.model.train", "slopmarker.data.dataset"]
+module = [
+    "slopmarker.model.modeling",
+    "slopmarker.model.train",
+    "slopmarker.data.dataset",
+    "slopmarker.export.onnx_export",
+]
 disable_error_code = [
     "no-any-return",
     "operator",
