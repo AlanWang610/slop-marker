@@ -48,7 +48,12 @@ base = (
 )
 
 export_base = base.uv_pip_install(
-    "optimum>=2.1", "optimum-onnx==0.1.0", "onnx>=1.17", "onnxruntime==1.29.0"
+    "optimum>=2.1",
+    "optimum-onnx==0.1.0",
+    "onnx>=1.17",
+    "onnxruntime==1.29.0",
+    # onnxruntime.quantization.matmul_nbits_quantizer imports it and does not declare it.
+    "onnx_ir",
 )
 
 
@@ -610,7 +615,7 @@ def quantization_sweep(
     from slopmarker.data.dataset import load_windows
     from slopmarker.data.normalize import collapse_whitespace
     from slopmarker.export.gates import compare_scores
-    from slopmarker.export.onnx_export import quantize_int8, to_fp16
+    from slopmarker.export.onnx_export import quantize_int8, quantize_weight_only
 
     volume.reload()
     root = Path(DATA_ROOT)
@@ -658,51 +663,68 @@ def quantization_sweep(
         return out
 
     baseline = run(fp32)
-    # const_b_only False is what the first export shipped: it quantizes the attention
-    # products as well as the weights. The four const_b_only=True rows are the recipes
-    # actually worth choosing between; the False rows stay in so the comparison is on
-    # the record rather than asserted.
-    variants: dict[str, dict[str, Any] | None] = {
-        "weights_only": {"quantize_embeddings": False, "const_b_only": True},
-        "weights_only_per_channel": {
-            "quantize_embeddings": False,
-            "per_channel": True,
-            "const_b_only": True,
-        },
-        "weights_gather": {"quantize_embeddings": True, "const_b_only": True},
-        "weights_gather_per_channel": {
+
+    # Two families, and the difference between them is the experiment.
+    #
+    # quantize_dynamic compresses weights AND rescales activations per tensor at
+    # runtime. Every recipe built that way lost 4-6 points of pAUC with individual
+    # logits moving by up to 7, which weight rounding does not do.
+    #
+    # MatMulNBits quantizes only the constant weight operands, block-wise, and leaves
+    # activations in float. If pAUC returns, the activations were the cause -- and the
+    # artifact is the one worth shipping anyway, since ORT Web's WASM backend supports
+    # the op and block scales handle outlier weights better than one scale per tensor.
+    dynamic: dict[str, dict[str, Any]] = {
+        "dyn_weights_gather": {"quantize_embeddings": True, "const_b_only": True},
+        "dyn_weights_gather_per_channel": {
             "quantize_embeddings": True,
             "per_channel": True,
             "const_b_only": True,
         },
-        # reduce_range holds weights to 7 bits, leaving headroom in the int32
-        # accumulator. It is normally an old-hardware workaround, but when activations
-        # carry outliers it also stops the products saturating, so it is worth a row.
-        "weights_gather_reduce_range": {
+        # reduce_range holds weights to 7 bits, leaving accumulator headroom. Normally
+        # an old-hardware workaround, but it also stops products saturating when the
+        # activations carry outliers, so it is worth a row.
+        "dyn_weights_gather_reduce_range": {
             "quantize_embeddings": True,
             "per_channel": True,
             "const_b_only": True,
             "reduce_range": True,
         },
-        # The control: half precision quantizes nothing and should track fp32. If it
-        # does and int8 does not, the damage is activation range rather than weights.
-        "fp16": None,
+        # The recipe the first bundle shipped, kept so the comparison stays on record.
+        "dyn_all_matmul_gather": {"quantize_embeddings": True, "const_b_only": False},
     }
+    weight_only: dict[str, dict[str, Any]] = {
+        "wo_int8_gather": {"bits": 8, "quantize_embeddings": True},
+        "wo_int8_weights": {"bits": 8, "quantize_embeddings": False},
+        "wo_int4_gather": {"bits": 4, "quantize_embeddings": True},
+    }
+
     results: dict[str, Any] = {}
-    for name, kwargs in variants.items():
+
+    def record(name: str, build: Any) -> None:
+        """One failing variant must not cost the whole sweep, as fp16 did."""
         path = export_dir / f"model.{name}.onnx"
-        if kwargs is None:
-            quantization = to_fp16(fp32, path)
-        else:
-            quantization = quantize_int8(fp32, path, **kwargs)  # type: ignore[arg-type]
-        comparison = compare_scores(baseline, run(path))
+        try:
+            quantization = build(path)
+            comparison = compare_scores(baseline, run(path))
+        except Exception as error:  # a variant may be unsupported by this ORT build
+            results[name] = {"error": f"{type(error).__name__}: {error}"}
+            print(f"{name}: FAILED {type(error).__name__}: {error}")
+            return
         results[name] = {"quantization": quantization, "comparison": comparison}
         print(
             f"{name}: {quantization['int8_mb']:.0f}MB"
             f" nodes {quantization['matmul_integer_nodes']}"
             f" auroc {comparison['fp32']['auroc']:.4f} -> {comparison['int8']['auroc']:.4f}"
+            f" pauc {comparison['fp32']['pauc_2pct']:.4f} -> {comparison['int8']['pauc_2pct']:.4f}"
             f" spearman {comparison['spearman']:.4f}"
         )
+        path.unlink(missing_ok=True)  # a 150-600MB file per variant fills the volume
+
+    for name, kwargs in weight_only.items():
+        record(name, lambda p, k=kwargs: quantize_weight_only(fp32, p, **k))
+    for name, kwargs in dynamic.items():
+        record(name, lambda p, k=kwargs: quantize_int8(fp32, p, **k))
 
     report = {"run_id": run_id, "split": split, "n": len(rows), "variants": results}
     (export_dir / "quantization_sweep.json").write_text(

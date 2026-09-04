@@ -285,3 +285,66 @@ def to_fp16(fp32_path: Path, out_path: Path) -> dict[str, Any]:
         "problems": [],
         "passed": True,
     }
+
+
+def quantize_weight_only(
+    fp32_path: Path,
+    out_path: Path,
+    *,
+    bits: int = 8,
+    block_size: int = 128,
+    quantize_embeddings: bool = True,
+) -> dict[str, Any]:
+    """Block-wise weight-only quantization, leaving activations in float.
+
+    This is the variable the dynamic-quantization sweep could not isolate.
+    `quantize_dynamic` compresses weights *and* scales activations per tensor at
+    runtime; every recipe built that way lost four to six points of pAUC, with
+    individual logits moving by up to 7 against a range of about +-3.3. Weights alone
+    do not explain a move that size, and transformer activations are known to carry
+    outlier features that capture a per-tensor scale.
+
+    MatMulNBits quantizes only the constant weight operands and keeps activations in
+    float, so if the pAUC returns, the activations were the cause. It is also the more
+    useful artifact if it works: block-wise scales at `block_size` handle weight
+    outliers far better than one scale per tensor, and ORT Web's WASM backend supports
+    the op.
+    """
+    import onnx
+    from onnxruntime.quantization.matmul_nbits_quantizer import (
+        DefaultWeightOnlyQuantConfig,
+        MatMulNBitsQuantizer,
+    )
+
+    op_types = ("MatMul", "Gather") if quantize_embeddings else ("MatMul",)
+    config = DefaultWeightOnlyQuantConfig(
+        block_size=block_size, bits=bits, op_types_to_quantize=op_types
+    )
+    quantizer = MatMulNBitsQuantizer(onnx.load(str(fp32_path)), algo_config=config)
+    quantizer.process()
+    quantizer.model.save_model_to_file(str(out_path), use_external_data_format=False)
+
+    fp32_mb = fp32_path.stat().st_size / 1e6
+    out_mb = out_path.stat().st_size / 1e6
+    model = onnx.load(str(out_path), load_external_data=False)
+    counts: dict[str, int] = {}
+    for node in model.graph.node:
+        counts[node.op_type] = counts.get(node.op_type, 0) + 1
+    nbits_nodes = counts.get("MatMulNBits", 0)
+
+    problems: list[str] = []
+    if nbits_nodes < MIN_MATMUL_INTEGER_NODES:
+        problems.append(f"only {nbits_nodes} MatMulNBits nodes; weights were not quantized")
+    if out_mb > fp32_mb * 0.75:
+        problems.append(f"output is {out_mb:.0f}MB against fp32 {fp32_mb:.0f}MB; no shrink")
+    return {
+        "fp32_mb": round(fp32_mb, 1),
+        "int8_mb": round(out_mb, 1),
+        "compression": round(fp32_mb / out_mb, 2) if out_mb else 0.0,
+        "op_types_requested": list(op_types),
+        "bits": bits,
+        "block_size": block_size,
+        "matmul_integer_nodes": nbits_nodes,
+        "problems": problems,
+        "passed": not problems,
+    }
