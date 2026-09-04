@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "version": "mb-base-0.2.0-dev",
+  "temperature": 0.731,
+  "t_on": 0.8397,
+  "t_off": 0.742,
+  "min_words": 40,
+  "max_length": 512,
+  "aggregate": {
+    "length_penalty_words": 80,
+    "run_min_words": 150,
+    "doc_prior_min_fraction": 0.2,
+    "doc_prior_bump_logodds": 0.25
+  }
+}

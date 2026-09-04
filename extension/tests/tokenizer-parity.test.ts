@@ -8,7 +8,8 @@
  * taking, and this test is what makes using their implementation safe.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { bundleDirFor, loadFixture } from "./fixtures.js";
@@ -26,10 +27,15 @@ const bundle = bundleDirFor(fx.model_version);
 const have = bundle !== null && existsSync(`${bundle}/tokenizer.json`);
 
 describe.skipIf(!have)(`tokenizer parity (${fx.model_version})`, async () => {
-  const { AutoTokenizer, env } = await import("@huggingface/transformers");
-  env.allowRemoteModels = false;
-  env.localModelPath = `${bundle}/..`;
-  const tokenizer = await AutoTokenizer.from_pretrained(fx.model_version);
+  const { PreTrainedTokenizer } = await import("@huggingface/transformers");
+  // Constructed exactly the way src/worker/worker.ts constructs it, from the two bundled
+  // JSON blobs. Testing a different load path would prove something we do not ship.
+  const read = (name: string): unknown =>
+    JSON.parse(readFileSync(join(bundle!, name), "utf-8")) as unknown;
+  const tokenizer = new PreTrainedTokenizer(
+    read("tokenizer.json"),
+    read("tokenizer_config.json"),
+  );
 
   it("adds [CLS] and [SEP] via the post-processor", () => {
     const out = tokenizer("hello world", { add_special_tokens: true });
