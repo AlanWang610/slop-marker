@@ -88,13 +88,35 @@ scores first, the content-keyed score cache so syndicated and revisited text is 
 once, and capping `max_length`. Note the third knob is weaker than it looks here: the
 median chunk is 215 tokens, so a 256 cap only trims the tail.
 
+## Observed in real browsers
+
+The Node numbers above are per-`run()`. What each browser actually gets is decided by
+thread availability, and the two differ exactly as scope.md 12 predicted -- now measured
+rather than assumed, by `extension/e2e/run.mjs` and `extension/e2e/firefox.mjs`:
+
+| | cross-origin isolated | threads | 215-token chunk |
+|---|---|---|---|
+| Chrome (offscreen document) | **yes**, via the manifest COOP/COEP keys | 4 | ~308 ms |
+| Firefox (event page) | **no** | 1 | ~1122 ms |
+
+Firefox is roughly **3.6x slower per chunk**, and the cause is structural rather than
+incidental: `cross_origin_embedder_policy` and `cross_origin_opener_policy` are Chrome-only
+manifest keys, and the Firefox build strips them because the AMO validator rejects unknown
+keys rather than ignoring them. Without cross-origin isolation `SharedArrayBuffer` is
+unavailable and ORT falls back to a single thread.
+
+That is a real difference in what a user experiences, and it is the one place where
+scope.md 1's "identical detection behaviour on both browsers" needs reading carefully: the
+*scores* are identical, and the fixtures prove it. The *latency* is not, and cannot be
+without a Firefox mechanism for isolating an extension page.
+
+The observed mode is written to `storage.local` and shown on the options page, which is
+what scope.md 6.3 asks for.
+
 ## What this does not cover
 
-- **Real browsers.** These are Node numbers. Thread availability differs: Chrome's
-  offscreen document should be cross-origin isolated via the manifest COOP/COEP keys and
-  reach the 4-thread row, Firefox may land in either. The browser harness is the next
-  measurement.
-- **Logit parity.** Latency only. That the WASM graph reproduces the Python scores has not
-  been checked here and needs a `fixtures/logits.json` oracle.
+- **Logit parity.** Latency only. That the WASM graph reproduces the Python scores is
+  measured separately, in `extension/tests/model-parity.test.ts` against
+  `fixtures/logits.json`: max |delta| 2.72e-5 against a 1e-3 tolerance.
 - **A layer-dropped backbone**, which scope.md 10 names as the fallback if the budget
   cannot be met. Not attempted; it is a model change, not an extension change.

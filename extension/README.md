@@ -11,6 +11,8 @@ npm test                 # unit + cross-language parity
 npm run typecheck
 npm run lint
 npm run e2e              # builds, then drives a real Chromium
+npm run e2e:firefox      # builds, then drives a real Firefox (geckodriver)
+npm run e2e:all          # both
 ```
 
 `npm test` and `npm run e2e` both need a local model bundle:
@@ -29,7 +31,7 @@ git, so a fresh checkout legitimately does not have one.
 | Background | MV3 service worker, stateless | MV3 event page |
 | Host (session, cache, queue) | Offscreen document | The event page itself |
 | Model download | Service worker | The event page |
-| Threads | 4 (cross-origin isolated) | Runtime check; may be 1 |
+| Threads | **4** (cross-origin isolated) | **1** (COOP/COEP stripped, so not isolated) |
 
 The routers are the only browser-specific runtime code. `router/shared.ts` holds the
 protocol, `host/host.ts` the session and queue, and neither knows which browser it is on.
@@ -106,8 +108,6 @@ beyond the local caches (§1, §11).
 
 ## Known gaps
 
-- **Firefox has never been run.** The build lints clean and its manifest is correct, but no
-  Firefox has loaded it. `web-ext run --source-dir dist/firefox` is the next step.
 - **The offscreen wrapper is unverified.** Headless Chromium creates offscreen documents but
   never executes their scripts, so `e2e/run.mjs` opens `host.html` as an ordinary tab. Same
   code, same manifest, same relay — only the ~40-line wrapper goes untested.

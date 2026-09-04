@@ -13,7 +13,9 @@
     "build:chrome": "node scripts/build.mjs --browser=chrome",
     "build:firefox": "node scripts/build.mjs --browser=firefox",
     "bench": "node scripts/bench-ort.mjs",
-    "e2e": "node scripts/build.mjs --browser=chrome --model-base-url=http://127.0.0.1:8787 && node e2e/run.mjs"
+    "e2e": "node scripts/build.mjs --browser=chrome --model-base-url=http://127.0.0.1:8787 && node e2e/run.mjs",
+    "e2e:firefox": "node scripts/build.mjs --browser=firefox --model-base-url=http://127.0.0.1:8787 && node e2e/firefox.mjs",
+    "e2e:all": "npm run e2e && npm run e2e:firefox"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
@@ -26,7 +28,9 @@
     "@types/node": "^24.10.1",
     "esbuild": "^0.25.12",
     "eslint": "^10.10.0",
+    "geckodriver": "^6.1.1",
     "playwright": "^1.62.1",
+    "selenium-webdriver": "^4.48.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
     "vitest": "^3.2.4"
