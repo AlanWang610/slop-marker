@@ -1,7 +1,7 @@
 """Spawn AI-side generation against the deployed Modal app, then exit.
 
-    uv run python scripts/launch_generation.py --shards 24 --per-shard 5000
-    uv run python scripts/launch_generation.py --status
+uv run python scripts/launch_generation.py --shards 24 --per-shard 5000
+uv run python scripts/launch_generation.py --status
 """
 
 from __future__ import annotations
