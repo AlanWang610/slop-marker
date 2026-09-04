@@ -1034,8 +1034,15 @@ def document_eval(
                 if doc is not None and doc.host:
                     train_hosts.add(doc.host)
 
+        # Genre comes from the windows, not from the document on disk. build() relabels
+        # any document left as "other" from its text and writes the result into the
+        # windows without updating interim/, so reading doc.genre reports the label the
+        # harvester guessed rather than the one training and calibration used. It put
+        # 42% of this sample in a bucket the corpus manifest does not even contain.
+        genre_of = {w.doc_id: w.genre for w in load_windows(root, version, "test")}
+
         pool = []
-        for doc_id in {w.doc_id for w in load_windows(root, version, "test")}:
+        for doc_id in sorted(genre_of):
             doc = by_id.get(doc_id)
             if doc is None or doc.doc_class != "human":
                 continue
@@ -1047,7 +1054,7 @@ def document_eval(
                     # production reads rendered DOM text, so match that here.
                     "text": strip_markdown(doc.text),
                     "is_ai": False,
-                    "domain": doc.genre,
+                    "domain": genre_of[doc_id],
                     "attack": doc.hard_negative_kind or "none",
                 }
             )
