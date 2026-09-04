@@ -205,7 +205,7 @@ def export_and_calibrate(
     from slopmarker.export.onnx_export import (
         check_parity,
         export_fp32,
-        quantize_int8,
+        quantize_mixed,
         verify_graph,
     )
 
@@ -247,8 +247,13 @@ def export_and_calibrate(
         volume.commit()
         return report
 
+    # Weight-only, block-wise, with the embedding table at a narrower width than the
+    # encoder. Measured against fp32 on identical rows: pAUC 0.9563 against 0.9571, a
+    # drop of 0.0008, at 136.7MB. Every dynamic-quantization recipe lost 4-6 points of
+    # pAUC because it rescales activations per tensor as well as compressing weights.
+    # See docs/measurements/export-r1.md.
     int8 = export_dir / "model.int8.onnx"
-    report["quantization"] = quantize_int8(fp32, int8)
+    report["quantization"] = quantize_mixed(fp32, int8, encoder_bits=8, embedding_bits=4)
     report["graph"] = verify_graph(fp32, ckpt)
 
     # Score the calibration and test splits with the *int8* artifact.
@@ -302,7 +307,7 @@ def export_and_calibrate(
     # structural check, so both graphs score the same rows before anything downstream
     # trusts the int8 numbers. The subsample is small because the comparison is a
     # ranking test, not an estimate of a 2% tail.
-    probe_rows = calib_rows[:1500]
+    probe_rows = calib_rows[:4000]
     report["int8_vs_fp32"] = _compare(
         score(probe_rows, "probe-fp32", fp32_session), score(probe_rows, "probe-int8")
     )

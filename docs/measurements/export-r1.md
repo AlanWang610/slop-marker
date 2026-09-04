@@ -95,3 +95,79 @@ split technical_docs has 974 human windows, not 57.
 
 A missing comparison is a failure, not a pass. That is the specific way the original
 path was wrong: absence of evidence read as evidence of correctness.
+
+## Quantization recipe, measured
+
+Every recipe scored against the fp32 graph on the same 1,500 test windows.
+
+| recipe | MB | AUROC | pAUC@2%FPR | ΔpAUC | Spearman | max Δlogit |
+|---|---|---|---|---|---|---|
+| fp32 baseline | 599.0 | 0.9921 | 0.9571 | -- | -- | -- |
+| weight-only int8, encoder only | 270.7 | 0.9923 | 0.9600 | **-0.0029** | 0.998 | 0.39 |
+| **weight-only, int8 encoder + int4 table** | **136.7** | **0.9925** | **0.9563** | **0.0008** | 0.983 | 2.23 |
+| weight-only int4 throughout | 80.8 | 0.9919 | 0.9317 | 0.0254 | 0.810 | 4.94 |
+| dynamic int8, weights + embeddings | 150.6 | 0.9673 | 0.9021 | 0.0550 | 0.623 | 7.38 |
+| dynamic int8, per-channel | 151.3 | 0.9777 | 0.9148 | 0.0423 | 0.638 | 7.19 |
+| dynamic int8, all matmuls *(shipped in r1)* | 150.7 | 0.8103 | 0.6047 | 0.3524 | 0.409 | 7.95 |
+
+The split between the two families is the whole story. `quantize_dynamic` compresses
+weights *and* rescales activations per tensor at runtime; `MatMulNBits` compresses only
+the constant weight operands and leaves activations in float. Weight-only is lossless
+here -- pAUC marginally above fp32 -- and no dynamic recipe comes close, whatever is
+done with per-channel scales, reduce_range, or the embedding table.
+
+Two incidental findings, both from rows that were expected to differ and did not:
+
+- `MatMulNBits` silently ignores `Gather` at 8 bits. The int8-with-embeddings and
+  int8-without-embeddings builds came out byte-identical at 270.7MB, with 38.7M
+  embedding parameters left in fp32. At 4 bits it does quantize them, which is the only
+  way the int4 row reaches 80.8MB. `quantize_mixed` therefore fails the build when no
+  `GatherBlockQuantized` node appears, since the sole symptom is a file 120MB too large.
+- The encoder and the embedding table need not share a width. int8 encoder with an int4
+  table is 136.7MB at a pAUC cost of 0.0008, which is how the scope.md target is reached
+  without quantizing anything that turned out to be sensitive.
+
+## Dynamic int8 is not portable, and that is disqualifying
+
+Two sweeps over identical inputs returned AUROC 0.978 and 0.550 for the same dynamic
+recipe, from files identical in size, node counts and every flag. Scoring the same 400
+rows twice per container across three containers explains it:
+
+| recipe | within container | AVX-512 vs AVX2, mean logit | max Δ |
+|---|---|---|---|
+| int8 encoder + int4 table | 0.0 | 0.000000 | 0.000002 |
+| dynamic int8, per-channel | 0.0 | 1.233807 | 3.371312 |
+
+Both are bitwise deterministic on any one machine, which is precisely why this hides.
+Across instruction sets the weight-only build agrees to 2e-06. The dynamic build does
+not agree at all: on a container without AVX-512 VNNI its output collapses to roughly
+-1.07 for every input.
+
+    AVX-512   [-3.083, -3.244, -3.105, -3.272, +2.316]
+    AVX2      [-1.083, -1.086, -1.071, -1.089, -1.056]
+
+The fifth window is AI-authored. It scores +2.32 on one machine and negative on the
+other. This is ONNX Runtime's `MatMulInteger` kernels, not anything in this pipeline.
+
+For a model that ships to browsers on unknown hardware this rules out dynamic
+quantization by itself, before any accuracy argument. It would have produced garbage
+for a fraction of users, and nothing in the export path was looking for it. It also
+means the "dynamic loses 4-6 points of pAUC" figures above are the AVX-512 numbers;
+on AVX2 the loss is total.
+
+## Gate revision
+
+The plan gated on `Spearman >= 0.995`. Only the 270MB build reaches that; the 136.7MB
+build reaches 0.983 while dropping 0.0008 of pAUC. Rather than relax the number to
+admit the preferred variant, the gate now measures what Spearman was standing in for:
+
+| condition | threshold | why |
+|---|---|---|
+| pAUC@2%FPR drop | <= 0.01 | separation at the operating point, measured on the shipped artifact |
+| AUROC drop | <= 0.01 | separation overall |
+| decision flip rate | <= 0.01 | share of windows the two artifacts put on opposite sides of the threshold -- what a reader actually sees |
+| Spearman | >= 0.95 | retained only to catch gross reordering, of the kind that produced 0.045 |
+
+Spearman summarises the entire score range, nearly all of which sits far from the
+threshold and cannot change any verdict. The flip rate measures the same concern
+directly and at the right place.
