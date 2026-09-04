@@ -9,7 +9,7 @@
  */
 
 /** Bundle this extension release expects. Keys the score cache (scope.md 11). */
-export const MODEL_VERSION = "mb-base-0.2.0-dev";
+export const MODEL_VERSION = "mb-base-0.3.0-dev";
 
 /**
  * Where the bundle is served from (scope.md 6.4). Files are fetched as
@@ -37,7 +37,7 @@ export const BUNDLE_FILES = [
  * are verified against THIS, not against a SHA256SUMS fetched alongside them -- otherwise a
  * tampered upload would simply ship its own matching checksums.
  */
-export const SHIPPED_SHA256SUMS = "fe5b32fe0117f9a59a3c5c952b699c087263cfb43b1906ffb4ed42bdf6ed50b8  calibration.json\na2a483f6c8893e8d096920453b224ca7e029e6caac59d68331f63b6bf196b6b3  config.json\n42e850ac70f2df942d3e36fbc5a702dd5eb4a352c105d29732f7562fca0fb22c  model.onnx\n6c8aaa9a542084f2457eab775d4eeb51f92a70c0fd9de28d5edb0ddec3c08d30  tokenizer.json\nc5a7dfd44d93c5d7ed9b2ddcd7a6018e935ec7d53f1de45910ea9868e0ff1c17  tokenizer_config.json\n";
+export const SHIPPED_SHA256SUMS = "1653d5019032fb674ee396c0fc59f52bba30ab04f98104d3c2755f821d86e771  calibration.json\na2a483f6c8893e8d096920453b224ca7e029e6caac59d68331f63b6bf196b6b3  config.json\n42e850ac70f2df942d3e36fbc5a702dd5eb4a352c105d29732f7562fca0fb22c  model.onnx\n6c8aaa9a542084f2457eab775d4eeb51f92a70c0fd9de28d5edb0ddec3c08d30  tokenizer.json\nc5a7dfd44d93c5d7ed9b2ddcd7a6018e935ec7d53f1de45910ea9868e0ff1c17  tokenizer_config.json\n";
 
 /** Verbatim calibration.json from the bundle. Parsed by parseCalibration, never by hand. */
-export const SHIPPED_CALIBRATION_JSON = "{\n  \"schema_version\": 1,\n  \"version\": \"mb-base-0.2.0-dev\",\n  \"temperature\": 0.731,\n  \"t_on\": 0.8397,\n  \"t_off\": 0.742,\n  \"min_words\": 40,\n  \"max_length\": 512,\n  \"aggregate\": {\n    \"length_penalty_words\": 80,\n    \"run_min_words\": 150,\n    \"doc_prior_min_fraction\": 0.2,\n    \"doc_prior_bump_logodds\": 0.25\n  }\n}\n";
+export const SHIPPED_CALIBRATION_JSON = "{\n  \"schema_version\": 1,\n  \"version\": \"mb-base-0.3.0-dev\",\n  \"temperature\": 0.731,\n  \"t_on\": 0.8397,\n  \"t_off\": 0.742,\n  \"min_words\": 40,\n  \"max_length\": 512,\n  \"aggregate\": {\n    \"length_penalty_words\": 80,\n    \"run_min_words\": 150,\n    \"doc_prior_min_fraction\": 0.2,\n    \"doc_prior_bump_logodds\": 0.25\n  }\n}\n";
