@@ -17,6 +17,7 @@
   "dependencies": {
     "@eslint/js": "^10.0.1",
     "@huggingface/transformers": "^4.2.0",
+    "franc-min": "^6.2.0",
     "onnxruntime-web": "^1.29.0"
   },
   "devDependencies": {

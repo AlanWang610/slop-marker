@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>slop-marker inference host</title>
+<!--
+  Chrome only. This document exists so the ORT session and its Web Worker survive service
+  worker restarts (scope.md 6.2). It is never shown; it renders nothing on purpose.
+
+  It is cross-origin isolated via the manifest COOP/COEP keys, which is what lets ORT use
+  threads -- worth 3.6x on this model. That same isolation is why it cannot download the
+  bundle itself; see src/host/model-store.ts.
+-->
+<script type="module" src="offscreen.js"></script>

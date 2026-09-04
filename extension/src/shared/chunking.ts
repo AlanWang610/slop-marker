@@ -29,24 +29,46 @@ export function chunkBlock(
   maxWords: number = MAX_WORDS,
 ): string[] {
   const collapsed = collapseWhitespace(text);
+  const cp = toCodePoints(collapsed);
+  return chunkSpans(collapsed, minWords, maxWords).map(([a, b]) => cp.slice(a, b).join(""));
+}
+
+/**
+ * The same chunking, as [start, end) codepoint spans into `collapseWhitespace(text)`.
+ *
+ * The content script needs this: to highlight a run it has to map chunks back to DOM
+ * ranges, and it cannot do that from the strings alone. Spans are safe because
+ * `splitSentences` partitions the input and its sentences rejoin with exactly one space
+ * (`" ".join(sentences) === text.trim()`), so a group of consecutive sentences is always a
+ * contiguous span rather than something that merely stringifies the same.
+ *
+ * chunking.test.ts asserts the two agree on every fixture case, so this cannot drift into
+ * being a second, subtly different chunker.
+ */
+export function chunkSpans(
+  collapsed: string,
+  minWords: number = MIN_WORDS,
+  maxWords: number = MAX_WORDS,
+): Array<[number, number]> {
   if (countWords(collapsed) < minWords) return [];
 
   const cp = toCodePoints(collapsed);
-  const chunks: string[] = [];
-  let current: string[] = [];
+  const spans: Array<[number, number]> = [];
+  let start: number | null = null;
+  let end = 0;
   let currentWords = 0;
 
-  for (const [start, end] of splitSentences(collapsed)) {
-    const sentence = cp.slice(start, end).join("");
-    const words = countWords(sentence);
-    if (current.length > 0 && currentWords + words > maxWords) {
-      chunks.push(current.join(" "));
-      current = [];
+  for (const [sentenceStart, sentenceEnd] of splitSentences(collapsed)) {
+    const words = countWords(cp.slice(sentenceStart, sentenceEnd).join(""));
+    if (start !== null && currentWords + words > maxWords) {
+      spans.push([start, end]);
+      start = null;
       currentWords = 0;
     }
-    current.push(sentence);
+    start ??= sentenceStart;
+    end = sentenceEnd;
     currentWords += words;
   }
-  if (current.length > 0) chunks.push(current.join(" "));
-  return chunks;
+  if (start !== null) spans.push([start, end]);
+  return spans;
 }

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>slop-marker — setup</title>
+    <link rel="stylesheet" href="shared.css" />
+  </head>
+  <body>
+    <main>
+      <h1>slop-marker</h1>
+      <p class="lede">
+        Two things to set up once. Nothing you read is ever sent anywhere — the model runs
+        on your machine.
+      </p>
+
+      <section id="permission-section">
+        <h2>1. Site access</h2>
+        <p id="permission-explainer">Checking…</p>
+        <div class="row">
+          <button id="grant" class="primary">Grant access to all sites</button>
+          <span id="permission-status"></span>
+        </div>
+        <p class="hint">
+          You can also set this yourself from the extension's permissions panel, and you can
+          exclude individual sites later from the options page.
+        </p>
+      </section>
+
+      <section id="model-section">
+        <h2>2. Model download</h2>
+        <p>
+          The classifier is about 137&nbsp;MB and is downloaded once, then cached. It is not
+          bundled with the extension so that a new model does not require a new release.
+          Every file is checked against a checksum built into this extension before it is
+          used.
+        </p>
+        <div class="row">
+          <button id="download" class="primary">Download model</button>
+          <span id="model-status"></span>
+        </div>
+        <progress id="progress" value="0" max="1" hidden></progress>
+      </section>
+
+      <section>
+        <h2>What to expect</h2>
+        <ul>
+          <li>Likely-AI passages are <em>dimmed</em>, never hidden, with a dashed left edge.</li>
+          <li>
+            Only runs of at least 150 words are marked. Detectors are near chance on short
+            spans, so short ones are deliberately left alone.
+          </li>
+          <li>English only. Other languages are skipped rather than guessed at.</li>
+          <li>
+            It is tuned to avoid false flags on human writing, which costs recall. It will
+            miss AI text — that is the intended direction of the trade.
+          </li>
+        </ul>
+      </section>
+    </main>
+    <script type="module" src="first-run.js"></script>
+  </body>
+</html>
