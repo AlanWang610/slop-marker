@@ -63,6 +63,9 @@ gen_image = _with_local(base_image.uv_pip_install("anthropic", "openai", "google
 
 VOLUMES = {DATA_ROOT: volume, "/hf-cache": hf_cache}
 
+# Generators reserved for the test split; the gate measures transfer to them.
+HELD_OUT_NAMES = frozenset({"claude-opus-5", "gpt-5.6-sol", "gemini-2.5-flash"})
+
 
 def _config() -> Any:
     """Load the config from the image copy of configs/."""
