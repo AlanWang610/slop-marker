@@ -348,3 +348,66 @@ def quantize_weight_only(
         "problems": problems,
         "passed": not problems,
     }
+
+
+def quantize_mixed(
+    fp32_path: Path,
+    out_path: Path,
+    *,
+    encoder_bits: int = 8,
+    embedding_bits: int = 4,
+    block_size: int = 128,
+) -> dict[str, Any]:
+    """Quantize the encoder and the embedding table to different widths.
+
+    The two are not equally sensitive and they are not equally large. ModernBERT-base
+    is ~110M encoder parameters and 38.7M embedding parameters, so at int8 throughout
+    the encoder the file still lands at 270MB with the table left in fp32 -- which is
+    what `MatMulNBits` does at 8 bits, because it quantizes `Gather` only at 4.
+
+    Running it twice, once per op type, lets the encoder keep the width that measured
+    lossless while the table takes the width that makes the size target reachable.
+    """
+    import onnx
+    from onnxruntime.quantization.matmul_nbits_quantizer import (
+        DefaultWeightOnlyQuantConfig,
+        MatMulNBitsQuantizer,
+    )
+
+    def pass_over(model: Any, bits: int, op_type: str) -> Any:
+        config = DefaultWeightOnlyQuantConfig(
+            block_size=block_size, bits=bits, op_types_to_quantize=(op_type,)
+        )
+        quantizer = MatMulNBitsQuantizer(model, algo_config=config)
+        quantizer.process()
+        return quantizer.model.model
+
+    model = pass_over(onnx.load(str(fp32_path)), encoder_bits, "MatMul")
+    model = pass_over(model, embedding_bits, "Gather")
+    onnx.save(model, str(out_path))
+
+    fp32_mb = fp32_path.stat().st_size / 1e6
+    out_mb = out_path.stat().st_size / 1e6
+    counts: dict[str, int] = {}
+    for node in onnx.load(str(out_path), load_external_data=False).graph.node:
+        counts[node.op_type] = counts.get(node.op_type, 0) + 1
+
+    problems: list[str] = []
+    if counts.get("MatMulNBits", 0) < MIN_MATMUL_INTEGER_NODES:
+        problems.append(f"only {counts.get('MatMulNBits', 0)} MatMulNBits nodes")
+    # Without this the embedding pass can silently no-op, as it does at 8 bits, and the
+    # only visible symptom is a file 120MB larger than intended.
+    if not counts.get("GatherBlockQuantized"):
+        problems.append("embedding table was not quantized; no GatherBlockQuantized node")
+    return {
+        "fp32_mb": round(fp32_mb, 1),
+        "int8_mb": round(out_mb, 1),
+        "compression": round(fp32_mb / out_mb, 2) if out_mb else 0.0,
+        "op_types_requested": ["MatMul", "Gather"],
+        "encoder_bits": encoder_bits,
+        "embedding_bits": embedding_bits,
+        "matmul_integer_nodes": counts.get("MatMulNBits", 0),
+        "quantized_gather": counts.get("GatherBlockQuantized", 0),
+        "problems": problems,
+        "passed": not problems,
+    }

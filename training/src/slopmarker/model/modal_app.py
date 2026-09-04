@@ -615,7 +615,11 @@ def quantization_sweep(
     from slopmarker.data.dataset import load_windows
     from slopmarker.data.normalize import collapse_whitespace
     from slopmarker.export.gates import compare_scores
-    from slopmarker.export.onnx_export import quantize_int8, quantize_weight_only
+    from slopmarker.export.onnx_export import (
+        quantize_int8,
+        quantize_mixed,
+        quantize_weight_only,
+    )
 
     volume.reload()
     root = Path(DATA_ROOT)
@@ -694,9 +698,15 @@ def quantization_sweep(
         "dyn_all_matmul_gather": {"quantize_embeddings": True, "const_b_only": False},
     }
     weight_only: dict[str, dict[str, Any]] = {
-        "wo_int8_gather": {"bits": 8, "quantize_embeddings": True},
-        "wo_int8_weights": {"bits": 8, "quantize_embeddings": False},
-        "wo_int4_gather": {"bits": 4, "quantize_embeddings": True},
+        "wo_int8": {"bits": 8, "quantize_embeddings": False},
+        "wo_int4": {"bits": 4, "quantize_embeddings": True},
+    }
+    # Encoder and embedding table at different widths. int8 throughout the encoder
+    # measured lossless but leaves the table in fp32 at 270MB, because MatMulNBits
+    # quantizes Gather only at 4 bits. These rows ask what the table costs.
+    mixed: dict[str, dict[str, Any]] = {
+        "mix_e8_emb4": {"encoder_bits": 8, "embedding_bits": 4},
+        "mix_e8_emb8": {"encoder_bits": 8, "embedding_bits": 8},
     }
 
     results: dict[str, Any] = {}
@@ -723,6 +733,8 @@ def quantization_sweep(
 
     for name, kwargs in weight_only.items():
         record(name, lambda p, k=kwargs: quantize_weight_only(fp32, p, **k))
+    for name, kwargs in mixed.items():
+        record(name, lambda p, k=kwargs: quantize_mixed(fp32, p, **k))
     for name, kwargs in dynamic.items():
         record(name, lambda p, k=kwargs: quantize_int8(fp32, p, **k))
 
