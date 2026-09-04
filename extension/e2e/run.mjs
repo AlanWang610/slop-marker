@@ -230,33 +230,31 @@ async function main() {
     check("extension page is cross-origin isolated", isolated === true, String(isolated));
 
     /**
-     * Headless Chromium creates an offscreen document but never executes its scripts --
-     * verified: even a trivial classic script in host.html does not run, while
+     * Headless Chromium creates an offscreen document but never executes its scripts.
+     * Verified directly: a trivial classic script in host.html does not run, while
      * chrome.runtime.getContexts() happily reports the document exists. That is a headless
-     * limitation, not a defect in the extension, and it makes the Chrome host unverifiable
-     * in this harness as written.
+     * limitation, not a defect in the extension.
      *
-     * So host.html is opened as an ordinary extension tab instead. It is the same document
-     * running the same code under the same manifest COOP/COEP, and it registers the same
-     * onConnect listener, so the service worker's relay reaches it exactly as it would
-     * reach the offscreen document. What goes unverified is the ~40-line offscreen wrapper;
-     * everything it wraps -- the Host, the worker, ORT, the tokenizer, aggregation and
-     * rendering -- is exercised for real.
+     * Headed, the offscreen document is real and this asserts it. Headless, host.html is
+     * opened as an ordinary tab instead -- the same document running the same code under
+     * the same manifest COOP/COEP, registering the same onConnect listener, reached by the
+     * same service-worker relay. Only the ~40-line offscreen wrapper differs, and `--headed`
+     * is what covers that.
      */
-    const hostTab = await context.newPage();
-    hostTab.on("console", (m) => {
-      if (verbose || m.type() === "error") console.log(`  [host] ${m.type()}: ${m.text()}`);
-    });
-    hostTab.on("pageerror", (e) => console.log(`  [host] uncaught: ${e.message}`));
-    await hostTab.goto(`chrome-extension://${extensionId}/host.html`);
-    const hostRan = await hostTab.evaluate(async () => {
-      const stored = await chrome.storage.local.get("offscreenBootedAt");
-      return stored.offscreenBootedAt ?? null;
-    });
-    check("host document evaluates its module", hostRan !== null, hostRan ? "yes" : "never ran");
+    let hostTab = null;
+    if (!headed) {
+      hostTab = await context.newPage();
+      hostTab.on("console", (m) => {
+        if (verbose || m.type() === "error") console.log(`  [host] ${m.type()}: ${m.text()}`);
+      });
+      hostTab.on("pageerror", (e) => console.log(`  [host] uncaught: ${e.message}`));
+      await hostTab.goto(`chrome-extension://${extensionId}/host.html`);
+    }
 
-    const hostIsolated = await hostTab.evaluate(() => self.crossOriginIsolated);
-    check("host document is cross-origin isolated", hostIsolated === true, String(hostIsolated));
+    if (hostTab !== null) {
+      const hostIsolated = await hostTab.evaluate(() => self.crossOriginIsolated);
+      check("host document is cross-origin isolated", hostIsolated === true, String(hostIsolated));
+    }
 
     // Speak the port protocol directly, without a content script. This separates "the Host
     // cannot start" from "the content script never asked", which look identical on a page.
@@ -275,6 +273,30 @@ async function main() {
       "the host answers a port directly",
       probe.some((t) => t.startsWith("ready")),
       probe.join(", ") || "no messages",
+    );
+
+    /**
+     * Checked *after* the port probe on purpose: the offscreen document is created lazily,
+     * on the first content-script connection, so before that there is nothing to ask.
+     *
+     * The marker is the module's first statement, so its presence means offscreen.js
+     * evaluated rather than throwing partway. It threw for a long time -- chrome.storage is
+     * undefined in an offscreen document and that was line one -- and the tab stand-in hid
+     * it, because an ordinary extension page does have chrome.storage.
+     */
+    const hostRan = await setup.evaluate(async () => {
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const stored = await chrome.storage.local.get("offscreenBootedAt");
+        if (stored.offscreenBootedAt) return stored.offscreenBootedAt;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      return null;
+    });
+    check(
+      headed ? "offscreen document evaluates its module" : "host document evaluates its module",
+      hostRan !== null,
+      hostRan ? (headed ? "real offscreen document" : "tab stand-in") : "never ran",
     );
 
     // Now the actual page.

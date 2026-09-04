@@ -18,6 +18,7 @@ import * as modelStore from "../host/model-store.js";
 import * as scoreCache from "../host/score-cache.js";
 import { MODEL_VERSION } from "../shared/bundle-config.js";
 import type { ContentMessage, HostMessage, ModelState } from "../shared/protocol.js";
+import * as storage from "../shared/storage.js";
 
 export interface RouterEnv {
   /** Download and verify the bundle. Must run somewhere COEP does not apply. */
@@ -40,7 +41,7 @@ export class Router {
 
   #setState(state: ModelState): void {
     this.#state = state;
-    void chrome.storage.local.set({ modelState: state });
+    void storage.set({ modelState: state }).catch(() => undefined);
     for (const listener of this.#listeners) listener(state);
   }
 
@@ -140,9 +141,9 @@ export class Router {
           // this back.
           const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
           console.error("slop-marker router:", err);
-          void chrome.storage.local.set({
-            lastError: { at: Date.now(), where: message.type, detail },
-          });
+          void storage
+            .set({ lastError: { at: Date.now(), where: message.type, detail } })
+            .catch(() => undefined);
         }
       })();
     });

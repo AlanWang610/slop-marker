@@ -89,9 +89,22 @@ parity. A missing runtime file surfaces as a flat "no available backend found".
 **Blocks under `min_words` are skipped.** A page of short paragraphs is scored not at all,
 which looks exactly like a page the model declined to flag.
 
+**A Chrome offscreen document has only `chrome.runtime`.** Measured over CDP:
+`Object.keys(chrome)` is `csi, loadTimes, runtime`, and `chrome.storage` is `undefined`.
+Everything else the host needs is a web API and is present — `caches`, `indexedDB`,
+`Worker`, `SharedArrayBuffer`, `crossOriginIsolated === true`. Use `shared/storage.ts`
+(which proxies through the service worker) rather than `chrome.storage` in anything the
+host imports.
+
 **Nothing shows an offscreen document's console.** Failures are recorded to
 `storage.local.lastError` as well as logged, because otherwise a Host that cannot start is
-indistinguishable from a page with no AI text on it.
+indistinguishable from a page with no AI text on it. To see inside one, attach over CDP:
+launch with `--remote-debugging-port`, find the `host.html` target in `/json/list` (it
+reports as `background_page`), and connect to its `webSocketDebuggerUrl`.
+
+**`npm run e2e` runs headless, which cannot execute offscreen documents at all** — it
+substitutes `host.html` as a tab. `npm run e2e -- --headed` uses the real offscreen
+document, and is the only thing that would have caught the `chrome.storage` bug.
 
 ## Firefox packaging
 
@@ -108,9 +121,6 @@ beyond the local caches (§1, §11).
 
 ## Known gaps
 
-- **The offscreen wrapper is unverified.** Headless Chromium creates offscreen documents but
-  never executes their scripts, so `e2e/run.mjs` opens `host.html` as an ordinary tab. Same
-  code, same manifest, same relay — only the ~40-line wrapper goes untested.
 - **The model host is a placeholder.** `bundle-config.ts` points at
   `https://github.com/OWNER/REPO/releases/download`. Set it with
   `tools/sync_extension_assets.py --base-url`, and publish the bundle there.

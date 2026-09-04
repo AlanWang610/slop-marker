@@ -13,6 +13,7 @@
  *      assets do not send. A service worker is not an extension *page* and is unaffected.
  */
 
+import { handleProxyMessage } from "../shared/storage.js";
 import { handleCommand } from "./shared.js";
 import { OFFSCREEN_PORT, PORT_NAME } from "../shared/protocol.js";
 
@@ -114,13 +115,15 @@ chrome.runtime.onConnect.addListener((port) => {
  * meant the first page to ask silently got nothing back. The service worker always exists
  * when a message arrives, and it is also the only context that may fetch.
  */
-chrome.runtime.onMessage.addListener((message: { type: string }, _sender, sendResponse) =>
-  handleCommand(message, sendResponse, () => {
+chrome.runtime.onMessage.addListener((message: { type: string }, _sender, sendResponse) => {
+  // The offscreen document has no chrome.storage; it proxies through here.
+  if (handleProxyMessage(message, sendResponse)) return true;
+  return handleCommand(message, sendResponse, () => {
     // Best-effort: if the offscreen document is holding a session for a model we just
     // deleted, ask it to drop it. It may not exist, and that is fine.
     void chrome.runtime.sendMessage({ type: "clearModel" }).catch(() => undefined);
-  }),
-);
+  });
+});
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason !== "install") return;

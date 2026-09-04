@@ -12,23 +12,28 @@
  */
 
 import { OFFSCREEN_PORT } from "../shared/protocol.js";
+import * as storage from "../shared/storage.js";
 import { Router } from "../router/shared.js";
 import { Host } from "./host.js";
 
-// Recorded before anything else can throw. Nothing shows this document's console -- devtools
-// does not list offscreen documents by default -- so if the module fails to evaluate, its
-// onConnect listener is never registered and every port silently gets no reply. The options
-// page reads this back, and it is the difference between "broken" and "broken, here".
-void chrome.storage.local.set({ offscreenBootedAt: Date.now() });
+// Recorded before anything else can throw. Nothing shows this document's console -- no
+// devtools window lists offscreen documents -- so if the module fails to evaluate, its
+// onConnect listener is never registered and every port silently gets no reply, which on
+// screen is indistinguishable from a page with no AI text.
+//
+// These three statements are why the storage shim exists: they used to call
+// chrome.storage.local directly, and chrome.storage is undefined in an offscreen document.
+// The very first line of the module threw, so nothing below it ever ran.
+void storage.set({ offscreenBootedAt: Date.now() }).catch(() => undefined);
 self.addEventListener("error", (event) => {
-  void chrome.storage.local.set({
-    lastError: { at: Date.now(), where: "offscreen", detail: String(event.message) },
-  });
+  void storage
+    .set({ lastError: { at: Date.now(), where: "offscreen", detail: String(event.message) } })
+    .catch(() => undefined);
 });
 self.addEventListener("unhandledrejection", (event) => {
-  void chrome.storage.local.set({
-    lastError: { at: Date.now(), where: "offscreen", detail: String(event.reason) },
-  });
+  void storage
+    .set({ lastError: { at: Date.now(), where: "offscreen", detail: String(event.reason) } })
+    .catch(() => undefined);
 });
 
 const router = new Router({

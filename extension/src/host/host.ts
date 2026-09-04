@@ -18,6 +18,7 @@ import type {
   WorkerRequest,
   WorkerResponse,
 } from "../shared/protocol.js";
+import * as storage from "../shared/storage.js";
 import { readCached } from "./model-store.js";
 import * as cache from "./score-cache.js";
 
@@ -114,7 +115,8 @@ export class Host {
     });
 
     this.#threading = threading;
-    await chrome.storage.local.set({ threading });
+    // Via the shim: in a Chrome offscreen document chrome.storage does not exist.
+    await storage.set({ threading });
     return threading;
   }
 
