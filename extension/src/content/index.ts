@@ -12,7 +12,7 @@
  */
 
 import { aggregate, type Chunk } from "../shared/aggregate.js";
-import type { Calibration } from "../shared/calibration.js";
+import { type Calibration, withThresholdOverride } from "../shared/calibration.js";
 import { chunkSpans } from "../shared/chunking.js";
 import { contentHash, countWords, toCodePoints } from "../shared/normalize.js";
 import {
@@ -40,6 +40,8 @@ interface PageChunk {
 }
 
 let calibration: Calibration | null = null;
+/** Set from the options page; re-derives t_off so the hysteresis band survives. */
+let thresholdOverride: number | null = null;
 let chunks: PageChunk[] = [];
 let port: chrome.runtime.Port | null = null;
 let allowed = true;
@@ -98,7 +100,10 @@ function paint(): void {
   if (calibration === null || chunks.length === 0) return;
   if (chunks.some((c) => c.logit === null)) return;
 
-  const cal = calibration;
+  const cal =
+    thresholdOverride === null
+      ? calibration
+      : withThresholdOverride(calibration, thresholdOverride);
   const input: Chunk[] = chunks.map((c) => ({ logit: c.logit!, words: c.words }));
   const result = aggregate(input, cal);
 
@@ -269,12 +274,22 @@ async function rescan(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const stored = await chrome.storage.local.get("allowlist");
+  const stored = await chrome.storage.local.get(["allowlist", "thresholdOverride"]);
   const allowlist = (stored["allowlist"] as string[] | undefined) ?? [];
   if (allowlist.includes(location.origin)) {
     allowed = false;
     return;
   }
+  thresholdOverride = (stored["thresholdOverride"] as number | undefined) ?? null;
+
+  // Repaint when the override changes, so the options page slider is live on open tabs
+  // rather than needing a reload.
+  chrome.storage.onChanged.addListener((changes) => {
+    if (!("thresholdOverride" in changes)) return;
+    thresholdOverride = (changes["thresholdOverride"]?.newValue as number | undefined) ?? null;
+    schedulePaint();
+  });
+
   connect();
 }
 

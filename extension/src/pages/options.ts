@@ -4,6 +4,8 @@
  * telemetry and no reporting anywhere in this project.
  */
 
+import { SHIPPED_CALIBRATION_JSON } from "../shared/bundle-config.js";
+import { parseCalibration } from "../shared/calibration.js";
 import type { ModelState, ThreadingInfo } from "../shared/protocol.js";
 
 interface Status {
@@ -88,8 +90,10 @@ async function loadThreshold(): Promise<void> {
   const stored = await chrome.storage.local.get("thresholdOverride");
   const value = stored["thresholdOverride"] as number | undefined;
   if (value === undefined) {
-    $("threshold-value").textContent = "default";
-    threshold.value = "0.84";
+    // The slider starts at the shipped t_on so moving it is a relative act, not a jump.
+    const shipped = parseCalibration(SHIPPED_CALIBRATION_JSON);
+    $("threshold-value").textContent = `default (${shipped.t_on.toFixed(3)})`;
+    threshold.value = String(shipped.t_on);
   } else {
     $("threshold-value").textContent = value.toFixed(3);
     threshold.value = String(value);

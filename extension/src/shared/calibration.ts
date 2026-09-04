@@ -124,3 +124,20 @@ export function parseCalibration(text: string): Calibration {
 export function tOffFrom(tOn: number, deltaLogOdds: number): number {
   return sigmoid(logit(tOn) - deltaLogOdds);
 }
+
+/**
+ * Apply the user's threshold override (scope.md 6.3), keeping the hysteresis band intact.
+ *
+ * `t_off` is not an independent number: scope.md 4.5 derives it from `t_on` by a fixed
+ * offset in log-odds space, precisely because a fixed offset in probability space is not
+ * scale-free -- at t_on = 0.97 a 0.1 band spans 3.48 -> 1.90 in log-odds, and at t_on = 0.60
+ * it spans 0.41 -> 0.00. So the override moves `t_on` and re-derives `t_off` at the shipped
+ * bundle's own offset, rather than moving one threshold past the other.
+ */
+export function withThresholdOverride(cal: Calibration, tOn: number): Calibration {
+  const deltaLogOdds = logit(cal.t_on) - logit(cal.t_off);
+  const clamped = Math.min(Math.max(tOn, 0.01), 0.999);
+  const tOff = tOffFrom(clamped, deltaLogOdds);
+  if (!(tOff > 0 && tOff < clamped && clamped < 1)) return cal;
+  return { ...cal, t_on: clamped, t_off: tOff };
+}
