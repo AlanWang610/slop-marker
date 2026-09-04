@@ -241,8 +241,13 @@ class TestSeedFigures:
         from slopmarker.data.schema import DocumentRow
 
         doc = DocumentRow(
-            doc_id="d", text="Reserves rose 4.5% to 3.2 billion on 12 March 2021.",
-            source="cc_news", doc_class="human", ai_fraction=0.0, genre="news", n_words=20,
+            doc_id="d",
+            text="Reserves rose 4.5% to 3.2 billion on 12 March 2021.",
+            source="cc_news",
+            doc_class="human",
+            ai_fraction=0.0,
+            genre="news",
+            n_words=20,
         )
         figures = figures_of(doc)
         assert figures, "the extractor must find numbers in text that plainly has them"

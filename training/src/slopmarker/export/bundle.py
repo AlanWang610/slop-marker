@@ -77,7 +77,19 @@ def assemble(
     out_dir: Path,
     provenance: dict[str, Any] | None = None,
     read_only: bool = True,
+    gate: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Write the six-file bundle. Refuses unless the release gate passed.
+
+    The gate is a required argument in practice rather than a courtesy check: the
+    first bundle this function produced held a model that had lost twenty points of
+    AUROC to quantization, and every structural check upstream of here passed on it.
+    """
+    if gate is None:
+        raise RuntimeError("assemble requires a release gate result; see export.gates")
+    if not gate.get("passed"):
+        raise RuntimeError(f"release gate failed: {gate.get('failures', [])}")
+
     out_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(int8_model, out_dir / "model.onnx")
     for name in ("tokenizer.json", "tokenizer_config.json", "config.json"):

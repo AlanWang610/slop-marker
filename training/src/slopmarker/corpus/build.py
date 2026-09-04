@@ -256,10 +256,16 @@ def _cap_genre_share(windows: list[WindowRow], max_share: float, seed: int) -> l
 
     Sampling is seeded and label-stratified, so the AI rate inside a capped genre is
     preserved.
+
+    The per-genre allowance is a fixed point, not a one-shot fraction of the input.
+    Dropping windows shrinks the very total the share is measured against, so a limit
+    read off the pre-cap size leaves the capped genres above the cap: the first build
+    to use this asked for 0.25 and shipped two genres at 0.317 each. Iterating until
+    the allowance stops moving is what makes the number in the config the number in
+    the corpus.
     """
     if not windows or max_share >= 1.0:
         return windows
-    limit = int(len(windows) * max_share)
     by_cell: dict[tuple[str, int], list[WindowRow]] = defaultdict(list)
     for window in windows:
         by_cell[(window.genre, int(window.ai_fraction >= 0.7))].append(window)
@@ -267,6 +273,14 @@ def _cap_genre_share(windows: list[WindowRow], max_share: float, seed: int) -> l
     genres: dict[str, int] = defaultdict(int)
     for (genre, _), rows in by_cell.items():
         genres[genre] += len(rows)
+
+    limit = len(windows)
+    for _ in range(100):
+        total = sum(min(size, limit) for size in genres.values())
+        updated = int(total * max_share)
+        if updated == limit:
+            break
+        limit = updated
 
     rng = random.Random(seed)
     kept: list[WindowRow] = []

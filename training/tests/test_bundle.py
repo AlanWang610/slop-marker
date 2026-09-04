@@ -38,6 +38,9 @@ def parts(tmp_path: Path) -> dict[str, Path]:
     return {"model": model, "tokenizer": tokenizer, "cal": cal, "root": tmp_path}
 
 
+PASSING = {"passed": True, "failures": []}
+
+
 def test_model_version_format() -> None:
     assert model_version("1.0.0", "abc1234def") == "mb-base-1.0.0-abc1234"
 
@@ -49,6 +52,7 @@ def test_assemble_produces_exactly_six_files(parts: dict[str, Path]) -> None:
         tokenizer_dir=parts["tokenizer"],
         calibration_path=parts["cal"],
         out_dir=out,
+        gate=PASSING,
         read_only=False,
     )
     assert set(result["files"]) == {*BUNDLE_FILES, "SHA256SUMS"}
@@ -63,6 +67,7 @@ def test_provenance_is_written_beside_not_inside(parts: dict[str, Path]) -> None
         tokenizer_dir=parts["tokenizer"],
         calibration_path=parts["cal"],
         out_dir=out,
+        gate=PASSING,
         provenance={"run_id": "r1"},
         read_only=False,
     )
@@ -78,6 +83,7 @@ def test_checksums_round_trip(parts: dict[str, Path]) -> None:
         tokenizer_dir=parts["tokenizer"],
         calibration_path=parts["cal"],
         out_dir=out,
+        gate=PASSING,
         read_only=False,
     )
     assert verify_sha256sums(out) == []
@@ -91,6 +97,7 @@ def test_checksums_catch_a_truncated_copy(parts: dict[str, Path]) -> None:
         tokenizer_dir=parts["tokenizer"],
         calibration_path=parts["cal"],
         out_dir=out,
+        gate=PASSING,
         read_only=False,
     )
     (out / "model.onnx").write_bytes(b"\x08\x01onnx")  # truncated
@@ -104,6 +111,7 @@ def test_missing_file_is_reported(parts: dict[str, Path]) -> None:
         tokenizer_dir=parts["tokenizer"],
         calibration_path=parts["cal"],
         out_dir=out,
+        gate=PASSING,
         read_only=False,
     )
     (out / "config.json").unlink()
@@ -118,6 +126,7 @@ def test_incomplete_input_raises(parts: dict[str, Path]) -> None:
             tokenizer_dir=parts["tokenizer"],
             calibration_path=parts["cal"],
             out_dir=parts["root"] / "bundles" / "v1",
+            gate=PASSING,
             read_only=False,
         )
 
@@ -142,6 +151,7 @@ def test_bundle_is_read_only_after_assembly(parts: dict[str, Path]) -> None:
         tokenizer_dir=parts["tokenizer"],
         calibration_path=parts["cal"],
         out_dir=out,
+        gate=PASSING,
     )
     import os
 

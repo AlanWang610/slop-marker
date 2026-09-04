@@ -100,9 +100,7 @@ def train_model(
     return result
 
 
-@app.function(
-    image=train_image, gpu="L40S", volumes=VOLUMES, secrets=[hf_secret], timeout=4 * 3600
-)
+@app.function(image=train_image, gpu="L40S", volumes=VOLUMES, secrets=[hf_secret], timeout=4 * 3600)
 def score_split(run_id: str, version: str, split: str, checkpoint: str = "best") -> dict[str, Any]:
     """Score a split with the PyTorch checkpoint and write a scores file.
 
@@ -185,6 +183,7 @@ def export_and_calibrate(
     """
     import json
     import random
+    import time
     from pathlib import Path
 
     import numpy as np
@@ -196,6 +195,8 @@ def export_and_calibrate(
     from slopmarker.eval.calibrate import calibrate, verify
     from slopmarker.eval.calibration import AggregateParams, Calibration, t_off_from
     from slopmarker.export.bundle import assemble
+    from slopmarker.export.gates import compare_scores as _compare
+    from slopmarker.export.gates import release_gate
     from slopmarker.export.onnx_export import (
         check_parity,
         export_fp32,
@@ -211,18 +212,25 @@ def export_and_calibrate(
 
     fp32 = export_fp32(ckpt, export_dir)
 
-    # Scoring runs on CPU through ONNX Runtime, so the split is subsampled. The bound
-    # that matters is per-genre: placing a threshold at a 2% tail needs a few thousand
-    # human windows in the smallest genre, not every window in the corpus.
+    # Scoring runs on CPU through ONNX Runtime, so the splits are subsampled. Sampling
+    # is stratified by genre rather than uniform: genre shares run from 25% down to 2%,
+    # so a uniform sample starves the smallest genre -- and the smallest genre's tail is
+    # what sets the global threshold, so it is the one that must not be thin.
     rng = random.Random(0)
 
-    def sample(rows: list[Any]) -> list[Any]:
-        if len(rows) <= max_score:
-            return rows
-        return rng.sample(rows, max_score)
+    def sample(rows: list[Any], per_genre: int) -> list[Any]:
+        by_genre: dict[str, list[Any]] = {}
+        for row in rows:
+            by_genre.setdefault(row.genre, []).append(row)
+        out: list[Any] = []
+        for genre_rows in by_genre.values():
+            take = min(per_genre, len(genre_rows))
+            out.extend(rng.sample(genre_rows, take))
+        return out
 
-    calib_rows = sample(load_windows(root, version, "calibration"))
-    test_rows = sample(load_windows(root, version, "test"))
+    calib_rows = sample(load_windows(root, version, "calibration"), max_score)
+    test_rows = sample(load_windows(root, version, "test"), max_score)
+    print(f"scoring {len(calib_rows)} calibration and {len(test_rows)} test windows on int8")
     report["n_calibration"] = len(calib_rows)
     report["n_test"] = len(test_rows)
     sample_texts = [collapse_whitespace(r.text) for r in calib_rows[:200]]
@@ -244,11 +252,22 @@ def export_and_calibrate(
     session = ort.InferenceSession(
         str(int8), sess_options=options, providers=["CPUExecutionProvider"]
     )
+    fp32_session = ort.InferenceSession(
+        str(fp32), sess_options=options, providers=["CPUExecutionProvider"]
+    )
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
 
-    def score(rows: list[Any]) -> list[dict[str, Any]]:
+    def score(rows: list[Any], label: str, engine: Any = None) -> list[dict[str, Any]]:
         out = []
+        started = time.time()
         for start in range(0, len(rows), 64):
+            if start and start % 3200 == 0:
+                rate = start / max(1e-6, time.time() - started)
+                remaining = (len(rows) - start) / max(1e-6, rate)
+                print(
+                    f"  {label}: {start}/{len(rows)} at {rate:.0f}/s,"
+                    f" ~{remaining / 60:.1f} min left"
+                )
             chunk = rows[start : start + 64]
             enc = tokenizer(
                 [collapse_whitespace(r.text) for r in chunk],
@@ -257,7 +276,7 @@ def export_and_calibrate(
                 max_length=512,
                 return_tensors="np",
             )
-            logits = session.run(
+            logits = (engine or session).run(
                 None,
                 {
                     "input_ids": enc["input_ids"].astype(np.int64),
@@ -274,10 +293,20 @@ def export_and_calibrate(
                 )
         return out
 
-    calib_scores = score(calib_rows)
+    # Quantization is the one step that can degrade the model without tripping any
+    # structural check, so both graphs score the same rows before anything downstream
+    # trusts the int8 numbers. The subsample is small because the comparison is a
+    # ranking test, not an estimate of a 2% tail.
+    probe_rows = calib_rows[:1500]
+    report["int8_vs_fp32"] = _compare(
+        score(probe_rows, "probe-fp32", fp32_session), score(probe_rows, "probe-int8")
+    )
+    print(f"int8 vs fp32: {report['int8_vs_fp32']}")
+
+    calib_scores = score(calib_rows, "calibration")
     result = calibrate(calib_scores)
     t_off = t_off_from(result.t_on, 0.60)
-    checked = verify(score(test_rows), result.temperature, result.t_on)
+    checked = verify(score(test_rows, "test"), result.temperature, result.t_on)
 
     calibration = Calibration(
         version=bundle_version,
@@ -300,16 +329,26 @@ def export_and_calibrate(
         "per_genre": [vars(g) for g in result.per_genre],
     }
     report["test_verification"] = checked
+    report["gate"] = release_gate(report)
 
-    bundle_dir = root / "artifacts" / "bundles" / bundle_version
-    report["bundle"] = assemble(
-        int8_model=int8,
-        tokenizer_dir=ckpt,
-        calibration_path=calibration_path,
-        out_dir=bundle_dir,
-        provenance=report,
-        read_only=False,
-    )
+    if report["gate"]["passed"]:
+        bundle_dir = root / "artifacts" / "bundles" / bundle_version
+        report["bundle"] = assemble(
+            int8_model=int8,
+            tokenizer_dir=ckpt,
+            calibration_path=calibration_path,
+            out_dir=bundle_dir,
+            provenance=report,
+            gate=report["gate"],
+            read_only=False,
+        )
+    else:
+        # Everything measured is still written out. A refused bundle is a result, and
+        # the numbers behind the refusal are the ones worth reading.
+        print("release gate FAILED; no bundle assembled")
+        for failure in report["gate"]["failures"]:
+            print(f"  - {failure}")
+
     (export_dir / "report.json").write_text(json.dumps(report, indent=2, default=str), "utf-8")
     volume.commit()
     return report
@@ -439,5 +478,103 @@ def raid_eval(run_id: str, checkpoint: str = "best", limit: int = 20000) -> dict
     dest = root / "artifacts" / "runs" / run_id
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "raid_eval.json").write_text(json.dumps(report, indent=2, default=str), "utf-8")
+    volume.commit()
+    return report
+
+
+@app.function(
+    image=export_image,
+    cpu=16.0,
+    memory=65536,
+    volumes=VOLUMES,
+    secrets=[hf_secret],
+    timeout=4 * 3600,
+)
+def compare_artifacts(
+    run_id: str, version: str, split: str = "test", limit: int = 4000, checkpoint: str = "best"
+) -> dict[str, Any]:
+    """Score identical rows through the fp32 and int8 graphs and compare.
+
+    This is the gate that should have run before the bundle was assembled. Every other
+    check in the export path is structural -- node counts, file size, opsets -- and none
+    of them can see a quantization that ran correctly and still destroyed the model.
+    Only scoring both artifacts on the same rows can, and running it on one split holds
+    the split fixed so the only variable left is the arithmetic.
+    """
+    import json
+    import random
+    import time
+    from pathlib import Path
+
+    import numpy as np
+    import onnxruntime as ort
+    from transformers import AutoTokenizer
+
+    from slopmarker.data.dataset import load_windows
+    from slopmarker.data.normalize import collapse_whitespace
+    from slopmarker.export.gates import compare_scores
+
+    volume.reload()
+    root = Path(DATA_ROOT)
+    ckpt = root / "artifacts" / "runs" / run_id / checkpoint
+    export_dir = root / "artifacts" / "export" / run_id
+
+    rows = load_windows(root, version, split)
+    rng = random.Random(0)
+    if len(rows) > limit:
+        rows = rng.sample(rows, limit)
+    texts = [collapse_whitespace(r.text) for r in rows]
+    print(f"comparing on {len(rows)} {split} windows")
+
+    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 16
+
+    def run(path: Path, label: str) -> np.ndarray:
+        session = ort.InferenceSession(
+            str(path), sess_options=options, providers=["CPUExecutionProvider"]
+        )
+        out: list[float] = []
+        started = time.time()
+        for start in range(0, len(texts), 64):
+            if start and start % 1600 == 0:
+                rate = start / max(1e-6, time.time() - started)
+                print(f"  {label}: {start}/{len(texts)} at {rate:.0f}/s")
+            enc = tokenizer(
+                texts[start : start + 64],
+                padding=True,
+                truncation=True,
+                max_length=512,
+                return_tensors="np",
+            )
+            logits = session.run(
+                None,
+                {
+                    "input_ids": enc["input_ids"].astype(np.int64),
+                    "attention_mask": enc["attention_mask"].astype(np.int64),
+                },
+            )[0]
+            out.extend(float(v) for v in np.asarray(logits).reshape(-1))
+        return np.array(out, dtype=np.float64)
+
+    scores = {
+        "fp32": run(export_dir / "model.onnx", "fp32"),
+        "int8": run(export_dir / "model.int8.onnx", "int8"),
+    }
+
+    def as_rows(values: np.ndarray) -> list[dict[str, Any]]:
+        return [
+            {"genre": row.genre, "ai_fraction": row.ai_fraction, "logit": float(value)}
+            for row, value in zip(rows, values, strict=True)
+        ]
+
+    report = {
+        "run_id": run_id,
+        "split": split,
+        **compare_scores(as_rows(scores["fp32"]), as_rows(scores["int8"])),
+    }
+    (export_dir / f"compare.{split}.json").write_text(
+        json.dumps(report, indent=2), encoding="utf-8"
+    )
     volume.commit()
     return report
