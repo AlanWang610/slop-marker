@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import math
+import random
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -38,11 +39,17 @@ class TrainConfig:
     max_grad_norm: float = 1.0
     balanced_sampling: bool = True
     eval_every: int = 500
+    # Windows held for the in-training evaluation, drawn at random once and reused.
+    # This used to be "the first 40 batches of the val loader", which with an
+    # unshuffled loader meant the same ~1,280 windows in doc_id order every time --
+    # 3.5% of val, selected by filename. Both the reported AUROC and the checkpoint
+    # selection came off that slice.
+    eval_windows: int = 8000
     seed: int = 20260903
 
 
-def evaluate(model: Any, loader: Any, device: Any, limit: int = 40) -> dict[str, float]:
-    """Score a few batches for the training curve. The real evaluation is separate."""
+def evaluate(model: Any, loader: Any, device: Any, limit: int | None = None) -> dict[str, float]:
+    """Score the evaluation loader. Pass `limit` only to cut a run short deliberately."""
     import torch
 
     from ..eval.metrics import auroc, fpr_at_recall, pauc, split_by_label
@@ -52,7 +59,7 @@ def evaluate(model: Any, loader: Any, device: Any, limit: int = 40) -> dict[str,
     logits_all, targets_all, excess = [], [], []
     with torch.no_grad():
         for index, batch in enumerate(loader):
-            if index >= limit:
+            if limit is not None and index >= limit:
                 break
             batch = {k: v.to(device) for k, v in batch.items()}
             with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
@@ -108,7 +115,13 @@ def train(
     collate = WindowCollator(tokenizer)
 
     train_set = WindowDataset(train_rows, tokenizer, cfg.max_length)
-    val_set = WindowDataset(val_rows, tokenizer, cfg.max_length)
+    # A fixed random subsample, not the head of the split: taking the first N batches
+    # of an unshuffled loader evaluates whichever documents sort first by id, which is
+    # a property of the filenames rather than of the model.
+    eval_rows = val_rows
+    if len(eval_rows) > cfg.eval_windows:
+        eval_rows = random.Random(cfg.seed).sample(eval_rows, cfg.eval_windows)
+    val_set = WindowDataset(eval_rows, tokenizer, cfg.max_length)
 
     sampler = None
     shuffle = True
@@ -190,7 +203,7 @@ def train(
 
         _save(model, tokenizer, out_dir / "last", cfg)
 
-    final = evaluate(model, val_loader, device, limit=200)
+    final = evaluate(model, val_loader, device)
     log(f"final val: {json.dumps(final)}")
     (out_dir / "history.json").write_text(json.dumps(history, indent=2), encoding="utf-8")
     return {
