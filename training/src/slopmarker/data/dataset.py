@@ -105,17 +105,28 @@ def genre_ai_rates(rows: list[WindowRow]) -> dict[str, float]:
 
 
 def balanced_weights(rows: list[WindowRow]) -> np.ndarray:
-    """Sampling weights that equalise the AI rate within every genre.
+    """Sampling weights that equalise the AI rate *within* each genre.
 
-    Corpus construction aims for balance; this makes the training distribution exactly
-    balanced even when the harvest came out lopsided, which it usually does.
+    This is the mechanism that removes the "formal register implies AI" shortcut: if
+    marketing copy is 10% AI and blogs are 30%, the model can read the label off the
+    genre, and no auxiliary head will stop it.
+
+    Genre marginals are deliberately preserved rather than flattened. Equalising them
+    too would upsample the rarest genre by a factor of thirty against the most common
+    one -- on this corpus, technical documentation against academic prose -- which
+    trades a label shortcut for memorisation of a few thousand windows.
     """
-    counts: dict[tuple[str, int], int] = {}
+    genre_totals: dict[str, int] = {}
+    cell_totals: dict[tuple[str, int], int] = {}
     for row in rows:
-        key = (row.genre, int(row.ai_fraction >= 0.7))
-        counts[key] = counts.get(key, 0) + 1
+        label = int(row.ai_fraction >= 0.7)
+        genre_totals[row.genre] = genre_totals.get(row.genre, 0) + 1
+        key = (row.genre, label)
+        cell_totals[key] = cell_totals.get(key, 0) + 1
+
     weights = np.empty(len(rows), dtype=np.float64)
     for index, row in enumerate(rows):
-        key = (row.genre, int(row.ai_fraction >= 0.7))
-        weights[index] = 1.0 / counts[key]
+        label = int(row.ai_fraction >= 0.7)
+        # genre share preserved, label balanced inside it
+        weights[index] = genre_totals[row.genre] / cell_totals[(row.genre, label)]
     return weights / weights.sum()
