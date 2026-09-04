@@ -12,9 +12,16 @@ export length and the model returns silently wrong logits at every *other* lengt
 wrong.** ModernBERT-base is 149M parameters, so fp32 is ~596MB -- that part is right.
 But its 38.7M embedding parameters appear in the graph as a `Gather`, not a `MatMul`, so
 quantizing MatMul alone leaves them in fp32 and lands at ~266MB rather than the ~150MB
-the spec quotes. `Gather` is included here, gated on a measured accuracy delta, because
-per-tensor int8 across a 50k-row embedding table is the riskiest step in this pipeline
-for a detector whose signal is lexical.
+the spec quotes.
+
+An earlier version of this docstring called the embedding `Gather` "the riskiest step
+in this pipeline for a detector whose signal is lexical", and it was wrong. Measured
+against fp32 on identical rows, dropping the `Gather` entirely buys about a point of
+AUROC and costs 116MB. What actually destroyed the first export was
+`MatMulConstBOnly: False`, which extended quantization to the attention products; and
+what still costs several points of pAUC after that is dynamic quantization of
+activations, whose per-tensor scale is set by outlier features. See
+`docs/measurements/export-r1.md`.
 """
 
 from __future__ import annotations
@@ -251,3 +258,30 @@ def verify_graph(onnx_path: Path, tokenizer_dir: Path) -> dict[str, Any]:
                 "the browser could feed 8k-token inputs to a 512-token graph"
             )
     return {"opsets": opsets, "problems": problems, "passed": not problems}
+
+
+def to_fp16(fp32_path: Path, out_path: Path) -> dict[str, Any]:
+    """Half precision, as the control for the int8 experiment.
+
+    fp16 quantizes nothing: it rounds weights and activations to 11 bits of mantissa
+    with the exponent intact, so an outlier activation costs precision rather than
+    capturing the scale of everything beside it. If fp16 holds the fp32 numbers and
+    int8 does not, the damage is dynamic activation range, not weight resolution.
+    """
+    import onnx
+    from onnxruntime.transformers.float16 import convert_float_to_float16
+
+    model = onnx.load(str(fp32_path))
+    converted = convert_float_to_float16(model, keep_io_types=True)
+    onnx.save(converted, str(out_path))
+    fp32_mb = fp32_path.stat().st_size / 1e6
+    out_mb = out_path.stat().st_size / 1e6
+    return {
+        "fp32_mb": round(fp32_mb, 1),
+        "int8_mb": round(out_mb, 1),
+        "compression": round(fp32_mb / out_mb, 2) if out_mb else 0.0,
+        "op_types_requested": ["fp16"],
+        "matmul_integer_nodes": 0,
+        "problems": [],
+        "passed": True,
+    }
