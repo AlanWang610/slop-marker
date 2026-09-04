@@ -81,12 +81,18 @@ class SplitIntegrityError(AssertionError):
     """Raised when a split invariant is violated. Never downgraded to a warning."""
 
 
+# Reweighting can equalize a genre's AI rate but cannot invent distinct windows. Below
+# this many, the sampler is showing the model the same handful of documents over and
+# over at whatever rate it likes, and the genre contributes variety it does not have.
+MIN_MINORITY_WINDOWS_PER_GENRE = 1000
+
+
 def check_split_integrity(
     *,
     group_to_split: dict[str, Split],
     doc_to_group: dict[str, str],
     human_windows_per_genre_in_calibration: dict[Genre, int],
-    genre_ai_rate: dict[Genre, float],
+    genre_ai_counts: dict[Genre, tuple[int, int]],
     cfg: SplitConfig,
 ) -> None:
     """Assert everything that would silently inflate a metric if it were false."""
@@ -105,10 +111,21 @@ def check_split_integrity(
             f"{thin} (need {cfg.min_human_windows_per_genre_in_calibration} each)"
         )
 
-    # If a genre is mostly AI or mostly human, the model learns genre => label. This is
-    # what actually removes the "formal register implies AI" shortcut, not the aux head.
-    skewed = {g: rate for g, rate in genre_ai_rate.items() if not 0.4 <= rate <= 0.6}
-    if skewed:
+    # A genre that is mostly one class would teach the model genre => label. What
+    # prevents that here is the balanced sampler, which equalizes P(AI | genre) in the
+    # stream the model actually sees, so the corpus rate itself need not be 0.5 -- an
+    # earlier version of this check asserted [0.4, 0.6] on the corpus and was checking
+    # an object the design does not constrain. What the sampler cannot fix is a genre
+    # whose minority class has too few *distinct* windows to reweight, so that is the
+    # assertion.
+    starved = {
+        genre: counts
+        for genre, counts in genre_ai_counts.items()
+        if min(counts[1], counts[0] - counts[1]) < MIN_MINORITY_WINDOWS_PER_GENRE
+    }
+    if starved:
         raise SplitIntegrityError(
-            f"genre AI rates outside [0.4, 0.6] make genre a label-leaking feature: {skewed}"
+            "genres whose minority class has too few distinct windows for the balanced "
+            f"sampler to work with: {starved} "
+            f"(need {MIN_MINORITY_WINDOWS_PER_GENRE} each, as (total, ai))"
         )

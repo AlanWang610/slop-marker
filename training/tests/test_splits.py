@@ -94,7 +94,7 @@ class TestIntegrityChecks:
             group_to_split={"host:a.com": "train"},
             doc_to_group={"d1": "host:a.com"},
             human_windows_per_genre_in_calibration={g: 6000 for g in GENRES},
-            genre_ai_rate={g: 0.5 for g in GENRES},
+            genre_ai_counts={g: (20000, 10000) for g in GENRES},
             cfg=CFG,
         )
         base.update(overrides)
@@ -112,11 +112,21 @@ class TestIntegrityChecks:
         with pytest.raises(SplitIntegrityError, match="too thin"):
             check_split_integrity(**self._ok(human_windows_per_genre_in_calibration=thin))
 
-    def test_rejects_genre_label_skew(self) -> None:
-        """If marketing copy is 85% AI, the model learns marketing => AI."""
-        skewed = {g: 0.5 for g in GENRES} | {"product_marketing": 0.85}
-        with pytest.raises(SplitIntegrityError, match="label-leaking"):
-            check_split_integrity(**self._ok(genre_ai_rate=skewed))
+    def test_rejects_a_genre_the_sampler_cannot_balance(self) -> None:
+        """Reweighting fixes a rate; it cannot fix 200 distinct AI windows.
+
+        The corpus rate itself is allowed to be far from 0.5 -- the balanced sampler
+        equalizes what the model sees. What it cannot do is manufacture variety, so
+        the assertion is on distinct minority-class windows.
+        """
+        starved = {g: (20000, 10000) for g in GENRES} | {"technical_docs": (20000, 200)}
+        with pytest.raises(SplitIntegrityError, match="too few distinct windows"):
+            check_split_integrity(**self._ok(genre_ai_counts=starved))
+
+    def test_a_skewed_but_workable_rate_is_allowed(self) -> None:
+        """corpus v3 ran at 0.11-0.25 per genre; that is the sampler's job, not a fault."""
+        skewed = {g: (200000, 25000) for g in GENRES}
+        check_split_integrity(**self._ok(genre_ai_counts=skewed))
 
 
 def test_seed_and_its_derivatives_share_a_split() -> None:

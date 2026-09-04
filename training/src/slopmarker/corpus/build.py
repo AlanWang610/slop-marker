@@ -22,7 +22,7 @@ from typing import Any
 from ..data.genre import GENRES, Genre, genre_id
 from ..data.normalize import strip_markdown
 from ..data.schema import DocumentRow, Split, WindowRow
-from ..data.splits import assign_split, group_key
+from ..data.splits import assign_split, check_split_integrity, group_key
 from ..data.windows import sample_windows
 from .config import CorpusConfig
 from .decontam import RaidIndex
@@ -201,9 +201,26 @@ def build(root: Path, cfg: CorpusConfig, version: str, *, log: Any = print) -> d
             )
 
     windows = _cap_genre_share(windows, cfg.caps.get("max_genre_share", 1.0), cfg.corpus_seed)
+
+    stats.update(_summarize(by_id.values(), windows))
+    # The integrity assertions run before anything is written. They exist to stop a
+    # corpus that would silently inflate a metric from reaching training, which they
+    # can only do if a failure prevents the build from producing output -- the first
+    # three builds ran with this function written, tested, and never called.
+    step("checking split integrity")
+    assigned = [d for d in by_id.values() if d.group_key is not None and d.split is not None]
+    if len(assigned) != len(by_id):
+        raise ValueError(f"{len(by_id) - len(assigned)} documents left without a split")
+    check_split_integrity(
+        group_to_split={d.group_key: d.split for d in assigned},  # type: ignore[misc]
+        doc_to_group={d.doc_id: d.group_key for d in assigned},  # type: ignore[misc]
+        human_windows_per_genre_in_calibration=calibration_windows_per_genre(windows),
+        genre_ai_counts=_genre_ai_counts(windows),
+        cfg=cfg.splits,
+    )
+
     step(f"writing {len(windows)} windows after genre cap")
     _write_windows(root, windows, version)
-    stats.update(_summarize(by_id.values(), windows))
     (root / "processed" / version / "manifest.json").write_text(
         json.dumps(stats, indent=2), encoding="utf-8"
     )
@@ -323,16 +340,42 @@ def _summarize(documents: Any, windows: list[WindowRow]) -> dict[str, Any]:
         bucket[0] += 1
         bucket[1] += int(window.ai_fraction >= 0.7)
 
+    total = len(windows) or 1
     return {
         "documents": sum(1 for _ in documents),
         "windows": len(windows),
         "windows_by_genre": dict(genre_counts),
+        "genre_share": {g: n / total for g, n in genre_counts.items()},
         "windows_by_split": dict(split_counts),
         "windows_by_class": dict(class_counts),
+        # Per genre per split, human only. Its absence is why a calibration split
+        # holding 57 human technical_docs windows -- the genre that then set the
+        # binding threshold -- was not visible in any artifact the build produced.
+        "human_windows_by_genre_and_split": _human_by_genre_and_split(windows),
         "hard_negative_windows": dict(hard_negatives),
         "genre_ai_rate": {g: (n_ai / n if n else 0.0) for g, (n, n_ai) in genre_ai.items()},
         "genres_missing": [g for g in GENRES if g not in genre_counts],
     }
+
+
+def _human_by_genre_and_split(windows: list[WindowRow]) -> dict[str, dict[str, int]]:
+    counts: dict[str, Counter[str]] = defaultdict(Counter)
+    for window in windows:
+        if window.ai_fraction == 0.0:
+            counts[window.genre][window.split] += 1
+    return {genre: dict(splits) for genre, splits in sorted(counts.items())}
+
+
+def _genre_ai_counts(windows: list[WindowRow]) -> dict[Genre, tuple[int, int]]:
+    """(total, ai) per genre over the training split, which is what the sampler sees."""
+    counts: dict[Genre, list[int]] = defaultdict(lambda: [0, 0])
+    for window in windows:
+        if window.split != "train":
+            continue
+        bucket = counts[window.genre]
+        bucket[0] += 1
+        bucket[1] += int(window.ai_fraction >= 0.7)
+    return {genre: (bucket[0], bucket[1]) for genre, bucket in counts.items()}
 
 
 def calibration_windows_per_genre(windows: list[WindowRow]) -> dict[Genre, int]:

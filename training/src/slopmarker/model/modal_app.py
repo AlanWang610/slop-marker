@@ -578,3 +578,107 @@ def compare_artifacts(
     )
     volume.commit()
     return report
+
+
+@app.function(
+    image=export_image,
+    cpu=16.0,
+    memory=65536,
+    volumes=VOLUMES,
+    secrets=[hf_secret],
+    timeout=4 * 3600,
+)
+def quantization_sweep(
+    run_id: str, version: str, split: str = "calibration", limit: int = 1500
+) -> dict[str, Any]:
+    """Score every quantization recipe against fp32 on identical rows.
+
+    scope.md 5.4 picks its op list to hit a file size. Size is the easy half: the
+    question that decides the recipe is how much separation each variant costs, and
+    that can only be measured. The variants differ along the two axes that matter --
+    whether the 50k-row embedding table is quantized at all, and whether weights get
+    one scale per tensor or one per channel.
+    """
+    import json
+    import random
+    from pathlib import Path
+
+    import numpy as np
+    import onnxruntime as ort
+    from transformers import AutoTokenizer
+
+    from slopmarker.data.dataset import load_windows
+    from slopmarker.data.normalize import collapse_whitespace
+    from slopmarker.export.gates import compare_scores
+    from slopmarker.export.onnx_export import quantize_int8
+
+    volume.reload()
+    root = Path(DATA_ROOT)
+    ckpt = root / "artifacts" / "runs" / run_id / "best"
+    export_dir = root / "artifacts" / "export" / run_id
+    fp32 = export_dir / "model.onnx"
+
+    rows = load_windows(root, version, split)
+    rng = random.Random(0)
+    if len(rows) > limit:
+        rows = rng.sample(rows, limit)
+    texts = [collapse_whitespace(r.text) for r in rows]
+    print(f"sweeping on {len(rows)} {split} windows")
+
+    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 16
+
+    def run(path: Path) -> list[dict[str, Any]]:
+        session = ort.InferenceSession(
+            str(path), sess_options=options, providers=["CPUExecutionProvider"]
+        )
+        out: list[dict[str, Any]] = []
+        for start in range(0, len(texts), 64):
+            enc = tokenizer(
+                texts[start : start + 64],
+                padding=True,
+                truncation=True,
+                max_length=512,
+                return_tensors="np",
+            )
+            logits = session.run(
+                None,
+                {
+                    "input_ids": enc["input_ids"].astype(np.int64),
+                    "attention_mask": enc["attention_mask"].astype(np.int64),
+                },
+            )[0]
+            for row, value in zip(
+                rows[start : start + 64], np.asarray(logits).reshape(-1), strict=True
+            ):
+                out.append(
+                    {"genre": row.genre, "ai_fraction": row.ai_fraction, "logit": float(value)}
+                )
+        return out
+
+    baseline = run(fp32)
+    variants = {
+        "matmul_only": {"quantize_embeddings": False, "per_channel": False},
+        "matmul_only_per_channel": {"quantize_embeddings": False, "per_channel": True},
+        "matmul_gather": {"quantize_embeddings": True, "per_channel": False},
+        "matmul_gather_per_channel": {"quantize_embeddings": True, "per_channel": True},
+    }
+    results: dict[str, Any] = {}
+    for name, kwargs in variants.items():
+        path = export_dir / f"model.{name}.onnx"
+        quantization = quantize_int8(fp32, path, **kwargs)  # type: ignore[arg-type]
+        comparison = compare_scores(baseline, run(path))
+        results[name] = {"quantization": quantization, "comparison": comparison}
+        print(
+            f"{name}: {quantization['int8_mb']:.0f}MB"
+            f" auroc {comparison['fp32']['auroc']:.4f} -> {comparison['int8']['auroc']:.4f}"
+            f" spearman {comparison['spearman']:.4f}"
+        )
+
+    report = {"run_id": run_id, "split": split, "n": len(rows), "variants": results}
+    (export_dir / "quantization_sweep.json").write_text(
+        json.dumps(report, indent=2), encoding="utf-8"
+    )
+    volume.commit()
+    return report

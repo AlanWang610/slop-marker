@@ -131,13 +131,21 @@ def check_parity(
 
 
 def quantize_int8(
-    fp32_path: Path, int8_path: Path, *, quantize_embeddings: bool = True
+    fp32_path: Path,
+    int8_path: Path,
+    *,
+    quantize_embeddings: bool = True,
+    per_channel: bool = False,
 ) -> dict[str, Any]:
     """Dynamic int8 quantization, then assert it actually happened.
 
     There is a known ONNX Runtime regression where transformer MatMuls silently stop
     being quantized and the output file comes back the same size as the input, with no
     error raised anywhere. Trusting the call is not enough.
+
+    Note that these assertions establish only that quantization *ran*. Whether the
+    result still separates the classes is a question no property of the graph can
+    answer; `gates.compare_scores` answers it, and `gates.release_gate` enforces it.
     """
     from onnxruntime.quantization import QuantType, quantize_dynamic
 
@@ -147,9 +155,12 @@ def quantize_int8(
         model_output=str(int8_path),
         weight_type=QuantType.QInt8,
         op_types_to_quantize=op_types,
+        per_channel=per_channel,
         extra_options={"MatMulConstBOnly": False},
     )
-    return verify_quantized(fp32_path, int8_path, op_types)
+    report = verify_quantized(fp32_path, int8_path, op_types)
+    report["per_channel"] = per_channel
+    return report
 
 
 def verify_quantized(fp32_path: Path, int8_path: Path, op_types: list[str]) -> dict[str, Any]:
