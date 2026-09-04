@@ -153,3 +153,127 @@ def score_split(run_id: str, version: str, split: str, checkpoint: str = "best")
     (dest / f"{split}.{checkpoint}.json").write_text(json.dumps(out), encoding="utf-8")
     volume.commit()
     return {"split": split, "scored": len(out)}
+
+
+@app.function(image=export_image, cpu=16.0, memory=65536, volumes=VOLUMES, timeout=4 * 3600)
+def export_and_calibrate(
+    run_id: str, version: str, bundle_version: str, checkpoint: str = "best"
+) -> dict[str, Any]:
+    """Export to ONNX, quantize, calibrate on the int8 artifact, assemble the bundle.
+
+    The ordering is the point of this function existing as one unit: scope.md 5.5
+    requires the threshold to be selected on the artifact that actually ships, not on
+    the PyTorch model.
+    """
+    import json
+    from pathlib import Path
+
+    import numpy as np
+    import onnxruntime as ort
+    from transformers import AutoTokenizer
+
+    from slopmarker.data.dataset import load_windows
+    from slopmarker.data.normalize import collapse_whitespace
+    from slopmarker.eval.calibrate import calibrate, verify
+    from slopmarker.eval.calibration import AggregateParams, Calibration, t_off_from
+    from slopmarker.export.bundle import assemble
+    from slopmarker.export.onnx_export import (
+        check_parity,
+        export_fp32,
+        quantize_int8,
+        verify_graph,
+    )
+
+    volume.reload()
+    root = Path(DATA_ROOT)
+    ckpt = root / "artifacts" / "runs" / run_id / checkpoint
+    export_dir = root / "artifacts" / "export" / run_id
+    report: dict[str, Any] = {"run_id": run_id, "version": bundle_version}
+
+    fp32 = export_fp32(ckpt, export_dir)
+    calib_rows = load_windows(root, version, "calibration")
+    test_rows = load_windows(root, version, "test")
+    sample_texts = [collapse_whitespace(r.text) for r in calib_rows[:200]]
+
+    parity = check_parity(ckpt, fp32, sample_texts)
+    report["parity"] = parity.to_dict()
+    if not parity.passed:
+        report["error"] = "fp32 parity failed across shapes"
+        volume.commit()
+        return report
+
+    int8 = export_dir / "model.int8.onnx"
+    report["quantization"] = quantize_int8(fp32, int8)
+    report["graph"] = verify_graph(fp32, ckpt)
+
+    # Score the calibration and test splits with the *int8* artifact.
+    session = ort.InferenceSession(str(int8), providers=["CPUExecutionProvider"])
+    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+
+    def score(rows: list[Any]) -> list[dict[str, Any]]:
+        out = []
+        for start in range(0, len(rows), 32):
+            chunk = rows[start : start + 32]
+            enc = tokenizer(
+                [collapse_whitespace(r.text) for r in chunk],
+                padding=True,
+                truncation=True,
+                max_length=512,
+                return_tensors="np",
+            )
+            logits = session.run(
+                None,
+                {
+                    "input_ids": enc["input_ids"].astype(np.int64),
+                    "attention_mask": enc["attention_mask"].astype(np.int64),
+                },
+            )[0]
+            for row, logit in zip(chunk, logits, strict=True):
+                out.append(
+                    {
+                        "genre": row.genre,
+                        "ai_fraction": row.ai_fraction,
+                        "logit": float(np.asarray(logit).reshape(-1)[0]),
+                    }
+                )
+        return out
+
+    calib_scores = score(calib_rows)
+    result = calibrate(calib_scores)
+    t_off = t_off_from(result.t_on, 0.60)
+    checked = verify(score(test_rows), result.temperature, result.t_on)
+
+    calibration = Calibration(
+        version=bundle_version,
+        temperature=round(result.temperature, 4),
+        t_on=round(result.t_on, 4),
+        t_off=round(t_off, 4),
+        aggregate=AggregateParams(),
+    )
+    calibration_path = export_dir / "calibration.json"
+    calibration.save(calibration_path)
+
+    report["calibration"] = {
+        "temperature": result.temperature,
+        "t_on": result.t_on,
+        "t_off": t_off,
+        "binding_genre": result.binding_genre,
+        "recall_global": result.recall,
+        "recall_oracle": result.oracle_recall,
+        "oracle_gap": result.oracle_gap,
+        "per_genre": [vars(g) for g in result.per_genre],
+    }
+    report["test_verification"] = checked
+
+    bundle_dir = root / "artifacts" / "bundles" / bundle_version
+    report["bundle"] = assemble(
+        int8_model=int8,
+        tokenizer_dir=ckpt,
+        calibration_path=calibration_path,
+        out_dir=bundle_dir,
+        provenance=report,
+        read_only=False,
+    )
+    (export_dir / "report.json").write_text(json.dumps(report, indent=2, default=str), "utf-8")
+    volume.commit()
+    return report
