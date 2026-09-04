@@ -58,6 +58,10 @@ def _with_local(img: modal.Image) -> modal.Image:
     )
 
 
+# Unauthenticated Hub requests get rate-limited (observed during the harvest), and
+# the backbone download would fail on a 429 rather than retry usefully.
+hf_secret = modal.Secret.from_name("huggingface")
+
 train_image = _with_local(base)
 export_image = _with_local(export_base)
 
@@ -66,6 +70,7 @@ export_image = _with_local(export_base)
     image=train_image,
     gpu="H100",
     volumes=VOLUMES,
+    secrets=[hf_secret],
     timeout=8 * 3600,
     retries=modal.Retries(max_retries=2),
 )
@@ -95,7 +100,9 @@ def train_model(
     return result
 
 
-@app.function(image=train_image, gpu="L40S", volumes=VOLUMES, timeout=4 * 3600)
+@app.function(
+    image=train_image, gpu="L40S", volumes=VOLUMES, secrets=[hf_secret], timeout=4 * 3600
+)
 def score_split(run_id: str, version: str, split: str, checkpoint: str = "best") -> dict[str, Any]:
     """Score a split with the PyTorch checkpoint and write a scores file.
 
@@ -155,7 +162,14 @@ def score_split(run_id: str, version: str, split: str, checkpoint: str = "best")
     return {"split": split, "scored": len(out)}
 
 
-@app.function(image=export_image, cpu=16.0, memory=65536, volumes=VOLUMES, timeout=4 * 3600)
+@app.function(
+    image=export_image,
+    cpu=16.0,
+    memory=65536,
+    volumes=VOLUMES,
+    secrets=[hf_secret],
+    timeout=4 * 3600,
+)
 def export_and_calibrate(
     run_id: str, version: str, bundle_version: str, checkpoint: str = "best"
 ) -> dict[str, Any]:
@@ -283,7 +297,7 @@ def export_and_calibrate(
     image=train_image,
     gpu="L40S",
     volumes=VOLUMES,
-    secrets=[modal.Secret.from_name("huggingface")],
+    secrets=[hf_secret],
     timeout=4 * 3600,
 )
 def raid_eval(run_id: str, checkpoint: str = "best", limit: int = 20000) -> dict[str, Any]:
