@@ -25,6 +25,10 @@ export interface RouterEnv {
   ensureModel(): Promise<void>;
   /** Lazily construct the Host. Called at most once. */
   createHost(): Host;
+  /** Ground truth for "is the model here". Defaults to the Cache API. */
+  isCached?: (version: string) => Promise<boolean>;
+  /** Where the model state is mirrored for the pages to read. Defaults to storage.local. */
+  setStorage?: (items: Record<string, unknown>) => Promise<void>;
 }
 
 export class Router {
@@ -40,15 +44,32 @@ export class Router {
   }
 
   #setState(state: ModelState): void {
+    // Identical state is not an event. Without this, every `hello` answers `model` twice --
+    // refresh() notifies the listener that attachPort just added, and then attachPort
+    // replies again -- and every no-op refresh wakes every open tab.
+    if (JSON.stringify(state) === JSON.stringify(this.#state)) return;
     this.#state = state;
-    void storage.set({ modelState: state }).catch(() => undefined);
+    const write = this.env.setStorage ?? ((items) => storage.set(items));
+    void write({ modelState: state }).catch(() => undefined);
     for (const listener of this.#listeners) listener(state);
   }
 
-  /** Reflect what is already in the Cache API, without fetching. */
-  async refresh(): Promise<void> {
-    if (this.#state.phase === "downloading" || this.#state.phase === "verifying") return;
-    if (await modelStore.isCached(MODEL_VERSION)) {
+  /**
+   * Reflect what is already in the Cache API, without fetching.
+   *
+   * `force` is required after a download completes. Otherwise the guard below -- which is
+   * there so a concurrent refresh cannot wipe out live progress -- sees the `downloading`
+   * state that `ensureModel` itself set, returns early, and the Router stays `downloading`
+   * forever with the verified model sitting on disk. Every content script that connects
+   * then gets `phase: "downloading"` and is never sent a calibration, so the page is silently
+   * never scored.
+   */
+  async refresh(force = false): Promise<void> {
+    if (!force && (this.#state.phase === "downloading" || this.#state.phase === "verifying")) {
+      return;
+    }
+    const isCached = this.env.isCached ?? modelStore.isCached;
+    if (await isCached(MODEL_VERSION)) {
       this.#setState({ phase: "ready", version: MODEL_VERSION });
     } else if (this.#state.phase !== "error") {
       this.#setState({ phase: "absent" });
@@ -62,7 +83,7 @@ export class Router {
       try {
         this.#setState({ phase: "downloading", received: 0, total: 0 });
         await this.env.ensureModel();
-        await this.refresh();
+        await this.refresh(true);
       } catch (err) {
         this.#setState({
           phase: "error",
@@ -101,7 +122,18 @@ export class Router {
       }
     };
 
-    const listener = (state: ModelState): void => reply({ type: "model", state });
+    // One `model` message per actual change, per port. `hello` refreshes and then reports
+    // the state, and the refresh may itself have pushed the same state through the listener
+    // a moment earlier -- so without this every connect answers `model` twice.
+    let lastSent: string | null = null;
+    const sendState = (state: ModelState): void => {
+      const encoded = JSON.stringify(state);
+      if (encoded === lastSent) return;
+      lastSent = encoded;
+      reply({ type: "model", state });
+    };
+
+    const listener = (state: ModelState): void => sendState(state);
     this.#listeners.add(listener);
 
     port.onMessage.addListener((raw: unknown) => {
@@ -111,7 +143,7 @@ export class Router {
           switch (message.type) {
             case "hello": {
               await this.refresh();
-              reply({ type: "model", state: this.#state });
+              sendState(this.#state);
               if (this.#state.phase !== "ready") return;
               const host = this.#getHost();
               const threading = await host.start();
@@ -141,9 +173,10 @@ export class Router {
           // this back.
           const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
           console.error("slop-marker router:", err);
-          void storage
-            .set({ lastError: { at: Date.now(), where: message.type, detail } })
-            .catch(() => undefined);
+          const write = this.env.setStorage ?? ((items) => storage.set(items));
+          void write({ lastError: { at: Date.now(), where: message.type, detail } }).catch(
+            () => undefined,
+          );
         }
       })();
     });
@@ -171,16 +204,38 @@ export async function downloadHere(onState?: (state: ModelState) => void): Promi
  * the message the promise resolves to undefined. Everything here reads storage.local and
  * the Cache API, which any context can do.
  */
+export interface CommandDeps {
+  isCached(version: string): Promise<boolean>;
+  download(version: string, onState: (state: ModelState) => void): Promise<void>;
+  clearModelCache(): Promise<void>;
+  clearScores(): Promise<void>;
+  countScores(): Promise<number>;
+  storageGet(keys: string[]): Promise<Record<string, unknown>>;
+  storageSet(items: Record<string, unknown>): Promise<void>;
+}
+
+/** The real browser wiring. Substituted only by tests. */
+export const defaultCommandDeps: CommandDeps = {
+  isCached: (version) => modelStore.isCached(version),
+  download: (version, onState) => modelStore.download(version, onState),
+  clearModelCache: () => modelStore.clearCache(),
+  clearScores: () => scoreCache.clear(),
+  countScores: () => scoreCache.size(),
+  storageGet: (keys) => chrome.storage.local.get(keys),
+  storageSet: (items) => chrome.storage.local.set(items),
+};
+
 export function handleCommand(
   message: { type: string },
   sendResponse: (response: unknown) => void,
   onModelCleared?: () => void,
+  deps: CommandDeps = defaultCommandDeps,
 ): boolean {
   switch (message.type) {
     case "getStatus":
       void (async () => {
-        const cached = await modelStore.isCached(MODEL_VERSION);
-        const stored = await chrome.storage.local.get(["modelState", "threading"]);
+        const cached = await deps.isCached(MODEL_VERSION);
+        const stored = await deps.storageGet(["modelState", "threading"]);
         const previous = stored["modelState"] as ModelState | undefined;
         // The Cache API is the ground truth; a stored error survives until a retry clears it.
         const state: ModelState = cached
@@ -193,7 +248,7 @@ export function handleCommand(
         sendResponse({
           modelState: state,
           modelVersion: MODEL_VERSION,
-          cachedScores: await scoreCache.size(),
+          cachedScores: await deps.countScores(),
           threading: stored["threading"] ?? null,
         });
       })();
@@ -202,13 +257,13 @@ export function handleCommand(
     case "downloadModel":
       void (async () => {
         try {
-          await modelStore.download(MODEL_VERSION, (state) => {
-            void chrome.storage.local.set({ modelState: state });
+          await deps.download(MODEL_VERSION, (state) => {
+            void deps.storageSet({ modelState: state });
           });
           sendResponse({ ok: true });
         } catch (err) {
           const detail = err instanceof Error ? err.message : String(err);
-          await chrome.storage.local.set({ modelState: { phase: "error", message: detail } });
+          await deps.storageSet({ modelState: { phase: "error", message: detail } });
           sendResponse({ ok: false, message: detail });
         }
       })();
@@ -216,16 +271,16 @@ export function handleCommand(
 
     case "clearModel":
       void (async () => {
-        await modelStore.clearCache();
-        await scoreCache.clear();
-        await chrome.storage.local.set({ modelState: { phase: "absent" } });
+        await deps.clearModelCache();
+        await deps.clearScores();
+        await deps.storageSet({ modelState: { phase: "absent" } });
         onModelCleared?.();
         sendResponse({ ok: true });
       })();
       return true;
 
     case "clearScores":
-      void scoreCache.clear().then(() => sendResponse({ ok: true }));
+      void deps.clearScores().then(() => sendResponse({ ok: true }));
       return true;
 
     default:

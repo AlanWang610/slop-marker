@@ -18,6 +18,14 @@ export default tseslint.config(
     },
   },
   {
+    files: ["tests/**/*.ts"],
+    rules: {
+      // Test doubles implement async interfaces (HostEnv.readModel, CommandDeps.download,
+      // the Cache API). Satisfying the contract is the point; there is nothing to await.
+      "@typescript-eslint/require-await": "off",
+    },
+  },
+  {
     files: ["**/*.js", "**/*.mjs"],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: {

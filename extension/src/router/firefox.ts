@@ -16,7 +16,7 @@
  * single-threaded -- the observed mode is recorded and shown on the options page.
  */
 
-import { Host } from "../host/host.js";
+import { defaultHostEnv, Host } from "../host/host.js";
 import { PORT_NAME } from "../shared/protocol.js";
 import { downloadHere, handleCommand, Router } from "./shared.js";
 
@@ -24,7 +24,9 @@ const router = new Router({
   // Nothing constrains fetching here: Firefox ignores the COOP/COEP manifest keys.
   ensureModel: () => downloadHere(),
   createHost: () =>
-    new Host(chrome.runtime.getURL("worker.js"), chrome.runtime.getURL("ort/")),
+    new Host(
+      defaultHostEnv(chrome.runtime.getURL("worker.js"), chrome.runtime.getURL("ort/")),
+    ),
 });
 
 chrome.runtime.onConnect.addListener((port) => {

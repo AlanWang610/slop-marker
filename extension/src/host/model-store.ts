@@ -48,10 +48,27 @@ function fileUrl(version: string, file: string): string {
   return `${MODEL_BASE_URL}/${encodeURIComponent(version)}/${encodeURIComponent(file)}`;
 }
 
+/**
+ * What `download` checks against. Injected only by tests -- production always reads the
+ * SHA256SUMS compiled into the extension, which is the whole point of scope.md 6.4: a
+ * tampered upload cannot also rewrite the expectation.
+ */
+export interface BundleSpec {
+  readonly files: readonly string[];
+  readonly expected: ReadonlyMap<string, string>;
+}
+
+export function shippedBundle(): BundleSpec {
+  return { files: BUNDLE_FILES, expected: parseSha256Sums(SHIPPED_SHA256SUMS) };
+}
+
 /** True when every bundle file for `version` is already cached. */
-export async function isCached(version: string): Promise<boolean> {
+export async function isCached(
+  version: string,
+  files: readonly string[] = BUNDLE_FILES,
+): Promise<boolean> {
   const cache = await caches.open(CACHE_NAME);
-  for (const file of BUNDLE_FILES) {
+  for (const file of files) {
     if ((await cache.match(fileUrl(version, file))) === undefined) return false;
   }
   return true;
@@ -64,13 +81,14 @@ export async function isCached(version: string): Promise<boolean> {
 export async function download(
   version: string,
   onState: (state: ModelState) => void,
+  spec: BundleSpec = shippedBundle(),
 ): Promise<void> {
-  if (await isCached(version)) {
+  if (await isCached(version, spec.files)) {
     onState({ phase: "ready", version });
     return;
   }
 
-  const expected = parseSha256Sums(SHIPPED_SHA256SUMS);
+  const expected = spec.expected;
   const cache = await caches.open(CACHE_NAME);
 
   // Sizes are unknown until each response arrives, so progress is reported against the
@@ -79,7 +97,7 @@ export async function download(
   let received = 0;
   let total = 0;
 
-  for (const file of BUNDLE_FILES) {
+  for (const file of spec.files) {
     const url = fileUrl(version, file);
     const response = await fetch(url, { cache: "no-store", credentials: "omit" });
     if (!response.ok) {

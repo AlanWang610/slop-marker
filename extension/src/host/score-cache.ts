@@ -28,9 +28,12 @@ const DB_VERSION = 1;
 const STORE = "scores";
 const TS_INDEX = "ts";
 
-const MAX_ENTRIES = 50_000;
-/** Evict in bulk; trimming one record per insert would thrash the cursor. */
-const EVICT_TO = 45_000;
+/**
+ * LRU bounds (scope.md 11). Mutable so a test can exercise eviction without inserting
+ * fifty thousand records; nothing but tests ever writes to it. Evicting in bulk down to
+ * `evictTo` is deliberate -- trimming one record per insert would thrash the cursor.
+ */
+export const limits = { max: 50_000, evictTo: 45_000 };
 
 export interface CachedScore {
   readonly logit: number;
@@ -89,11 +92,11 @@ export async function get(hash: string, modelVersion: string): Promise<CachedSco
 export async function put(hash: string, entry: CachedScore): Promise<void> {
   await tx("readwrite", (store) => store.put({ hash, ...entry }));
   const count = await size();
-  if (count > MAX_ENTRIES) await evictOldest(count - EVICT_TO);
+  if (count > limits.max) await evictOldest(count - limits.evictTo);
 }
 
 /** Delete the `n` least recently used entries, oldest first, via the ts index. */
-async function evictOldest(n: number): Promise<void> {
+export async function evictOldest(n: number): Promise<void> {
   if (n <= 0) return;
   const db = await open();
   await new Promise<void>((resolve, reject) => {
@@ -140,4 +143,21 @@ export async function evictOtherVersions(modelVersion: string): Promise<number> 
 
 export async function size(): Promise<number> {
   return tx<number>("readonly", (store) => store.count());
+}
+
+/**
+ * The surface the Host depends on. Declared so a test can hand it a Map-backed stand-in and
+ * exercise the queue without an IndexedDB at all.
+ */
+export interface ScoreCache {
+  get(hash: string, modelVersion: string): Promise<CachedScore | null>;
+  put(hash: string, entry: CachedScore): Promise<void>;
+  clear(): Promise<void>;
+  evictOtherVersions(modelVersion: string): Promise<number>;
+  size(): Promise<number>;
+}
+
+/** Drop the memoized connection. Tests that swap the `indexedDB` global need this. */
+export function resetForTests(): void {
+  dbPromise = null;
 }

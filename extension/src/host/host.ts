@@ -20,7 +20,8 @@ import type {
 } from "../shared/protocol.js";
 import * as storage from "../shared/storage.js";
 import { readCached } from "./model-store.js";
-import * as cache from "./score-cache.js";
+import * as scoreCache from "./score-cache.js";
+import type { ScoreCache } from "./score-cache.js";
 
 /**
  * ORT threading (scope.md 6.3). Threads need cross-origin isolation, which Chrome should
@@ -33,6 +34,35 @@ function chooseThreads(): number {
 }
 
 type Reply = (message: HostMessage) => void;
+
+/**
+ * Everything the Host reaches outside itself. Injected rather than imported so the queue --
+ * the part with real ordering logic, and the part scope.md 7.4's viewport-first promise
+ * rests on -- can be driven deterministically by a test with a fake worker and an in-memory
+ * cache, instead of only through a browser.
+ */
+export interface HostEnv {
+  createWorker(): Worker;
+  /** The verified model bytes, from wherever the router put them. */
+  readModel(): Promise<ArrayBuffer>;
+  /** A packaged text asset, by name under assets/. */
+  readAsset(name: string): Promise<string>;
+  readonly cache: ScoreCache;
+  numThreads(): number;
+  readonly wasmPaths: string;
+}
+
+/** What both routers use in a real browser. */
+export function defaultHostEnv(workerUrl: string, wasmPaths: string): HostEnv {
+  return {
+    createWorker: () => new Worker(workerUrl, { type: "module" }),
+    readModel: () => readCached(MODEL_VERSION, "model.onnx"),
+    readAsset: (name) => fetchText(chrome.runtime.getURL(`assets/${name}`)),
+    cache: scoreCache,
+    numThreads: chooseThreads,
+    wasmPaths,
+  };
+}
 
 interface Pending {
   readonly request: ScoreRequest;
@@ -57,10 +87,7 @@ export class Host {
   #nextId = 1;
   #draining = false;
 
-  constructor(
-    private readonly workerUrl: string,
-    private readonly wasmPaths: string,
-  ) {}
+  constructor(private readonly env: HostEnv) {}
 
   get threading(): ThreadingInfo | null {
     return this.#threading;
@@ -73,18 +100,18 @@ export class Host {
   }
 
   async #boot(): Promise<ThreadingInfo> {
-    const removed = await cache.evictOtherVersions(MODEL_VERSION);
+    const removed = await this.env.cache.evictOtherVersions(MODEL_VERSION);
     if (removed > 0) {
       console.info(`slop-marker: dropped ${removed} scores from an older model`);
     }
 
     const [model, tokenizerJson, tokenizerConfigJson] = await Promise.all([
-      readCached(MODEL_VERSION, "model.onnx"),
-      fetchText(chrome.runtime.getURL("assets/tokenizer.json")),
-      fetchText(chrome.runtime.getURL("assets/tokenizer_config.json")),
+      this.env.readModel(),
+      this.env.readAsset("tokenizer.json"),
+      this.env.readAsset("tokenizer_config.json"),
     ]);
 
-    const worker = new Worker(this.workerUrl, { type: "module" });
+    const worker = this.env.createWorker();
     this.#worker = worker;
 
     const threading = await new Promise<ThreadingInfo>((resolve, reject) => {
@@ -107,8 +134,8 @@ export class Host {
         tokenizerJson,
         tokenizerConfigJson,
         maxLength: this.calibration.max_length,
-        numThreads: chooseThreads(),
-        wasmPaths: this.wasmPaths,
+        numThreads: this.env.numThreads(),
+        wasmPaths: this.env.wasmPaths,
       };
       // Transfer the 137 MB buffer rather than structured-cloning it.
       worker.postMessage(init, [model]);
@@ -125,7 +152,7 @@ export class Host {
    * the difference between a revisited page being instant and being re-scored.
    */
   async score(request: ScoreRequest, reply: Reply): Promise<void> {
-    const hit = await cache.get(request.hash, MODEL_VERSION);
+    const hit = await this.env.cache.get(request.hash, MODEL_VERSION);
     if (hit !== null) {
       reply({
         type: "score",
@@ -238,7 +265,7 @@ export class Host {
     if (pending === undefined) return;
 
     if (message.type === "result") {
-      void cache.put(pending.request.hash, {
+      void this.env.cache.put(pending.request.hash, {
         logit: message.logit,
         words: pending.request.words,
         modelVersion: MODEL_VERSION,

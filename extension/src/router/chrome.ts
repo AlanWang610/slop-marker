@@ -21,7 +21,7 @@ const OFFSCREEN_URL = "host.html";
 
 let creating: Promise<void> | null = null;
 
-async function ensureOffscreen(): Promise<void> {
+export async function ensureOffscreen(): Promise<void> {
   const existing = await chrome.runtime.getContexts({
     contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
     documentUrls: [chrome.runtime.getURL(OFFSCREEN_URL)],
@@ -56,8 +56,28 @@ async function ensureOffscreen(): Promise<void> {
  * the buffer that first `hello` is dropped and the page is simply never scored. It fails
  * silently and only on the first page after a browser start, which is the worst shape a
  * bug can have.
+ *
+ * `env` exists so relay.test.ts can drive exactly that race -- post before the offscreen
+ * document is ready, and assert the message still arrives, in order.
  */
-function relay(port: chrome.runtime.Port): void {
+export interface RelayEnv {
+  ensure(): Promise<void>;
+  connectDownstream(): chrome.runtime.Port;
+  onError(err: unknown): void;
+}
+
+export const defaultRelayEnv: RelayEnv = {
+  ensure: ensureOffscreen,
+  connectDownstream: () => chrome.runtime.connect({ name: OFFSCREEN_PORT }),
+  onError: (err) => {
+    console.error("slop-marker: could not create the offscreen document:", err);
+    void chrome.storage.local.set({
+      lastError: { at: Date.now(), where: "offscreen", detail: String(err) },
+    });
+  },
+};
+
+export function relay(port: chrome.runtime.Port, env: RelayEnv = defaultRelayEnv): void {
   const pending: unknown[] = [];
   let downstream: chrome.runtime.Port | null = null;
   let closed = false;
@@ -77,10 +97,10 @@ function relay(port: chrome.runtime.Port): void {
     downstream?.disconnect();
   });
 
-  void ensureOffscreen().then(
+  void env.ensure().then(
     () => {
       if (closed) return;
-      downstream = chrome.runtime.connect({ name: OFFSCREEN_PORT });
+      downstream = env.connectDownstream();
       downstream.onMessage.addListener((message: unknown) => {
         try {
           port.postMessage(message);
@@ -93,41 +113,41 @@ function relay(port: chrome.runtime.Port): void {
       pending.length = 0;
     },
     (err: unknown) => {
-      console.error("slop-marker: could not create the offscreen document:", err);
-      void chrome.storage.local.set({
-        lastError: { at: Date.now(), where: "offscreen", detail: String(err) },
-      });
+      env.onError(err);
       port.disconnect();
     },
   );
 }
 
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== PORT_NAME) return;
-  relay(port);
-});
-
-/**
- * Every page command is answered here, not in the offscreen document.
- *
- * The offscreen document is created lazily, and `sendMessage` that no context handles
- * resolves to `undefined` rather than failing -- so routing status through the offscreen
- * meant the first page to ask silently got nothing back. The service worker always exists
- * when a message arrives, and it is also the only context that may fetch.
- */
-chrome.runtime.onMessage.addListener((message: { type: string }, _sender, sendResponse) => {
-  // The offscreen document has no chrome.storage; it proxies through here.
-  if (handleProxyMessage(message, sendResponse)) return true;
-  return handleCommand(message, sendResponse, () => {
-    // Best-effort: if the offscreen document is holding a session for a model we just
-    // deleted, ask it to drop it. It may not exist, and that is fine.
-    void chrome.runtime.sendMessage({ type: "clearModel" }).catch(() => undefined);
+/** Registered at the bottom of the file. Separated so importing this module is inert. */
+export function install(): void {
+  chrome.runtime.onConnect.addListener((port) => {
+    if (port.name !== PORT_NAME) return;
+    relay(port);
   });
-});
 
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason !== "install") return;
-  // Chrome grants <all_urls> at install, so the first-run page's permission request is a
-  // no-op here. It runs anyway: it is also where the model download starts (scope.md 6.5).
-  void chrome.tabs.create({ url: chrome.runtime.getURL("first-run.html") });
-});
+  // Every page command is answered here, not in the offscreen document. The offscreen
+  // document is created lazily, and a `sendMessage` no context handles resolves to
+  // `undefined` rather than failing -- so routing status through it meant the first page to
+  // ask silently got nothing back. The service worker always exists when a message arrives,
+  // and it is also the only context that may fetch.
+  chrome.runtime.onMessage.addListener((message: { type: string }, _sender, sendResponse) => {
+    // The offscreen document has no chrome.storage; it proxies through here.
+    if (handleProxyMessage(message, sendResponse)) return true;
+    return handleCommand(message, sendResponse, () => {
+      // Best-effort: if the offscreen document is holding a session for a model we just
+      // deleted, ask it to drop it. It may not exist, and that is fine.
+      void chrome.runtime.sendMessage({ type: "clearModel" }).catch(() => undefined);
+    });
+  });
+
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason !== "install") return;
+    // Chrome grants <all_urls> at install, so the first-run page's permission request is a
+    // no-op here. It runs anyway: it is also where the model download starts (scope.md 6.5).
+    void chrome.tabs.create({ url: chrome.runtime.getURL("first-run.html") });
+  });
+}
+
+// Guarded so a test may import this module for `relay` without a chrome global.
+if (globalThis.chrome?.runtime !== undefined) install();

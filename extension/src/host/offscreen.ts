@@ -14,7 +14,7 @@
 import { OFFSCREEN_PORT } from "../shared/protocol.js";
 import * as storage from "../shared/storage.js";
 import { Router } from "../router/shared.js";
-import { Host } from "./host.js";
+import { defaultHostEnv, Host } from "./host.js";
 
 // Recorded before anything else can throw. Nothing shows this document's console -- no
 // devtools window lists offscreen documents -- so if the module fails to evaluate, its
@@ -45,7 +45,9 @@ const router = new Router({
     }
   },
   createHost: () =>
-    new Host(chrome.runtime.getURL("worker.js"), chrome.runtime.getURL("ort/")),
+    new Host(
+      defaultHostEnv(chrome.runtime.getURL("worker.js"), chrome.runtime.getURL("ort/")),
+    ),
 });
 
 chrome.runtime.onConnect.addListener((port) => {
