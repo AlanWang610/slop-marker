@@ -13,7 +13,7 @@
  * it proves the text was excluded, not merely that the model scored that copy low.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -137,15 +137,42 @@ function spaPage() {
   return doc("e2e spa", `  <main id="root"><p>Placeholder, replaced by the harness.</p></main>`);
 }
 
+/**
+ * The saved real-page corpus, served at /real/<name>. All four are works of the United
+ * States Government and all four are human-written, so the expected outcome is no
+ * highlights at all -- the false-positive direction, which is the one that matters for a
+ * high-precision detector and the one generated markup cannot test.
+ */
+function realPages() {
+  const dir = join(here, "real");
+  const manifestPath = join(dir, "manifest.json");
+  if (!existsSync(manifestPath)) return { routes: {}, pages: [] };
+
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  const routes = {};
+  const pages = [];
+  for (const page of manifest.pages) {
+    const file = join(dir, `${page.name}.html`);
+    if (!existsSync(file)) continue;
+    routes[`/real/${page.name}`] = readFileSync(file, "utf-8");
+    pages.push(page);
+  }
+  return { routes, pages };
+}
+
 export function buildPages() {
   const fx = JSON.parse(readFileSync(join(repo, "fixtures", "documents.json"), "utf-8"));
   const flagged = fx.documents.find((d) => d.expected.runs.some((r) => r.flagged));
   const clean = fx.documents.find((d) => !d.expected.runs.some((r) => r.flagged));
   if (!flagged || !clean) throw new Error("documents.json needs one flagged and one clean case");
 
+  const real = realPages();
+
   return {
     flaggedName: flagged.name,
     cleanName: clean.name,
+    /** Provenance for the saved corpus: name, url, licence note, sha256. */
+    realPages: real.pages,
     /** The raw flagged text, for pages the harness assembles in the browser. */
     flaggedText: flagged.text,
     /** Paragraph markup for that text, ready to inject. */
@@ -155,6 +182,7 @@ export function buildPages() {
       "/structured": structuredPage(flagged),
       "/dark": darkPage(flagged),
       "/spa": spaPage(),
+      ...real.routes,
     },
   };
 }

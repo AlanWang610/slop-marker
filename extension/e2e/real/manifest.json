@@ -1,0 +1,37 @@
+{
+  "note": "Saved verbatim. Every source is a work of the United States Government and is not subject to copyright (17 U.S.C. 105). Re-fetch with: node e2e/real/fetch.mjs --force",
+  "pages": [
+    {
+      "name": "nasa-press-release",
+      "url": "https://www.nasa.gov/news-release/nasa-sets-coverage-for-agencys-spacex-crew-11-launch-docking/",
+      "note": "modern CMS, heavy nav and script, press-release genre (the scope.md 2 hard negative)",
+      "bytes": 288763,
+      "sha256": "6148562bf16e3fc4966b3ec333f77b9d99ee47755b14b74ddbe1daaba1042d72",
+      "fetched": "2026-09-04"
+    },
+    {
+      "name": "weather-heat-safety",
+      "url": "https://www.weather.gov/safety/heat",
+      "note": "older government template, table-based layout, short paragraphs",
+      "bytes": 29285,
+      "sha256": "e9067dc02c93e58d83d2a3b11b2d969218247632d7141575a27d6f754785c5ee",
+      "fetched": "2026-09-04"
+    },
+    {
+      "name": "weather-lightning",
+      "url": "https://www.weather.gov/safety/lightning-science-overview",
+      "note": "same template, longer expository prose",
+      "bytes": 29052,
+      "sha256": "8bb49340dfcd26936919882f0446cd323289de4fecb9eb1541ad7fbcea171fc2",
+      "fetched": "2026-09-04"
+    },
+    {
+      "name": "weather-flood",
+      "url": "https://www.weather.gov/safety/flood",
+      "note": "same template, list-heavy",
+      "bytes": 26642,
+      "sha256": "808fbba2cc3ff66a15396d3faf030f9fa14bc74bd0be5e1c99c19dc2a4dc66df",
+      "fetched": "2026-09-04"
+    }
+  ]
+}

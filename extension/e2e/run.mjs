@@ -250,7 +250,7 @@ const check = (name, ok, detail = "") => {
 
 async function main() {
   const { chromium } = await import("playwright");
-  const { routes, flaggedName, cleanName, flaggedParagraphs } = buildPages();
+  const { routes, flaggedName, cleanName, flaggedParagraphs, realPages } = buildPages();
 
   const bundleServer = realHost ? null : await serveBundle(8787);
   const pageServer = await servePage(8788, routes);
@@ -295,7 +295,13 @@ async function main() {
 
     // Surface extension-side errors instead of letting them vanish into a dead page.
     // Without this, a worker that fails to start looks exactly like a page with no AI text.
-    context.on("weberror", (e) => console.log(`  [page error] ${e.error().message}`));
+    context.on("weberror", (e) => {
+      // Saved real pages raise these by design: their scripts are blocked, so inline code
+      // referencing jQuery or WordPress globals throws. Only interesting when asked for.
+      const message = e.error().message;
+      const expected = /(\$|wp|jQuery|dataLayer|gtag) is not defined/.test(message);
+      if (verbose || !expected) console.log(`  [page error] ${message}`);
+    });
     const wire = (target, label) => {
       target.on?.("console", (m) => {
         if (verbose || m.type() === "error") console.log(`  [${label}] ${m.type()}: ${m.text()}`);
@@ -794,6 +800,86 @@ async function main() {
     await setup.evaluate(async () => {
       await chrome.storage.local.remove("allowlist");
     });
+
+    /* -------------------------------------------- real pages, the false-positive side */
+
+    if (realPages.length === 0) {
+      console.log("\n  no saved corpus — run: node e2e/real/fetch.mjs");
+    } else {
+      console.log(`\n  ${realPages.length} saved real pages (human-written, expect no flags):`);
+
+      /**
+       * Wait for scoring to settle. There is no "done" signal, so watch the score cache and
+       * stop once it has not grown for a few seconds -- which also reports how many chunks
+       * the page produced, and that is the assertion that keeps "no false positives" from
+       * being vacuous. A page whose prose extraction missed entirely would trivially have
+       * none.
+       */
+      const settle = async () => {
+        let last = -1;
+        let stable = 0;
+        for (let i = 0; i < 90 && stable < 5; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          const status = await setup.evaluate(
+            async () => await chrome.runtime.sendMessage({ type: "getStatus" }),
+          );
+          const now = status?.cachedScores ?? 0;
+          stable = now === last ? stable + 1 : 0;
+          last = now;
+        }
+        return last;
+      };
+
+      for (const saved of realPages) {
+        const before = await setup.evaluate(
+          async () => await chrome.runtime.sendMessage({ type: "getStatus" }),
+        );
+        const real = await context.newPage();
+        // Blocking the page's own scripts guarantees ReferenceErrors from whatever inline
+        // code expected them (jQuery, WordPress globals). Expected, and not ours.
+        real.on("pageerror", (e) => {
+          if (verbose) console.log(`  [${saved.name}] uncaught: ${e.message}`);
+        });
+
+        // Nothing but our own server. These pages reference the live site's CSS, fonts,
+        // analytics and images; letting them load would make the run depend on the network
+        // and quietly re-fetch from nasa.gov on every invocation.
+        await real.route("**", (route) => {
+          const url = route.request().url();
+          if (url.startsWith("http://127.0.0.1:")) return route.continue();
+          return route.abort();
+        });
+
+        await real
+          .goto(`http://127.0.0.1:8788/real/${saved.name}`, { waitUntil: "domcontentloaded" })
+          .catch(() => undefined);
+
+        const scored = await settle();
+        const chunks = scored - (before?.cachedScores ?? 0);
+        const marked = await real.evaluate(() => ({
+          blocks: document.querySelectorAll("[data-slop-marker]").length,
+          ranges: CSS.highlights?.get("slop-marker")?.size ?? 0,
+          text: [...(CSS.highlights?.get("slop-marker") ?? [])]
+            .map((r) => r.toString())
+            .join(" ")
+            .slice(0, 200),
+        }));
+
+        check(
+          `${saved.name}: extraction finds prose to score`,
+          chunks > 0,
+          `${chunks} chunks scored`,
+        );
+        check(
+          `${saved.name}: no false positives on human-written text`,
+          marked.blocks === 0 && marked.ranges === 0,
+          marked.blocks === 0
+            ? "clean"
+            : `${marked.blocks} blocks flagged — "${marked.text}…"`,
+        );
+        await real.close();
+      }
+    }
 
     /* ------------------------------------------------ scope.md 7.4, port reconnect */
 

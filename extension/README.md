@@ -156,15 +156,15 @@ beyond the local caches (§1, §11).
 
 | | |
 |---|---|
-| unit, DOM and cross-language parity | 596 tests across 20 files |
-| Chrome, headless (host as a tab) | 44/44 |
-| Chrome, headed (real offscreen document) | 43/43 |
+| unit, DOM and cross-language parity | 614 tests across 21 files |
+| Chrome, headless (host as a tab) | 52/52 |
+| Chrome, headed (real offscreen document) | 51/51 |
 | Firefox (geckodriver, real UI) | 27/27 |
 | Firefox, installed from the built `.xpi` | 27/27 |
 | against the published release host | Chrome 42/42, Firefox 27/27 |
 | packaging (`.crx` + `.xpi`, read back) | 8/8 |
 | `web-ext lint` | 0 errors |
-| Python side, unchanged | 395 tests |
+| Python side | 395 tests |
 
 The counts differ by browser because some checks only apply to one. Headless opens
 `host.html` as a tab and can assert its cross-origin isolation directly; headed uses the
@@ -188,6 +188,11 @@ would have caught.
 Two of the vitest files -- `model-parity` and `document-parity` -- skip themselves unless
 `artifacts/bundles/<version>/model.onnx` is present, since the bundle never enters git.
 
+The saved corpus in `e2e/real/` is served locally with every external request blocked, so a
+run does not depend on the network and does not re-fetch from nasa.gov each time. It reports
+how many chunks each page produced as well as whether any was flagged: without that, "no
+false positives" on a page whose prose extraction missed entirely would be a vacuous pass.
+
 `--real-host` is not a formality: GitHub release assets carry no
 `Access-Control-Allow-Origin`, which is the entire reason the download runs in the service
 worker rather than the cross-origin-isolated offscreen document. A local test server sending
@@ -199,12 +204,13 @@ Everything below is *not* covered by any automated test. It is listed rather tha
 because the failures that cost the most here were all invisible ones -- a page that is never
 scored looks exactly like a page with nothing to flag.
 
-**No test uses a real website.** Every page in `e2e/` is generated from
-`fixtures/documents.json`. That makes the expected outcome exact -- Python already scored
-this text -- and it means the harness has never met a CMS template, a cookie banner, a
-paywall, or lazy images that reflow the page under a highlight. The synthetic pages model
-the *shapes* that matter (every candidate and exclusion in scope.md 7.1, a growing feed, a
-dark ground); they do not model the mess.
+**The real-page corpus is small, and one-sided.** `e2e/real/` holds four saved pages, and
+they only test the false-positive direction, because that is the only direction a licence
+allows: every source is a work of the United States Government and so not subject to
+copyright (17 U.S.C. 105), and all four are human-written. There is no saved page known to
+be AI-written, so the *positive* direction is still only tested on generated markup. Four
+pages is also a thin sample -- it says nothing about paywalls, infinite feeds on real
+sites, or lazy images that reflow the page under a highlight.
 
 **Nothing is AMO-signed.** `npm run package` builds both artifacts and reads them back
 — CRX3 header, signature, central directory, and `npm run e2e:firefox:xpi` installs the
@@ -230,9 +236,10 @@ the 30 s idle timer.
 Worth walking before calling a build good, since none of it is automated:
 
 - [ ] A known-AI article highlights, and the tooltip reports a sensible score and word count.
-- [ ] A hard negative does not: a press release, a product listing, and a forum thread
-      written by a non-native English speaker (the case scope.md 2 names as the main FPR
-      risk, and the one the language gate may quietly decline to score at all).
+- [ ] A hard negative does not: a product listing, and a forum thread written by a
+      non-native English speaker (the case scope.md 2 names as the main FPR risk, and the
+      one the language gate may quietly decline to score at all). The press-release genre
+      is now covered by the saved corpus.
 - [ ] A page in a language other than English is left alone.
 - [ ] Scrolling a long page fast does not leave stale highlights behind, and the text under
       the cursor is scored before the text far below it.
