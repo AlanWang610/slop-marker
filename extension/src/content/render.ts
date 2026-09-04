@@ -24,7 +24,14 @@ export interface RenderedRun {
   readonly modelVersion: string;
 }
 
-const supportsHighlights = typeof CSS !== "undefined" && "highlights" in CSS;
+/**
+ * Checked on each call rather than latched at import: the two rendering paths are then both
+ * reachable in one test run, and a page that defines CSS late cannot strand us on the
+ * fallback. It is two property lookups.
+ */
+function supportsHighlights(): boolean {
+  return typeof CSS !== "undefined" && "highlights" in CSS;
+}
 
 /**
  * First non-transparent computed background-color walking up ancestors.
@@ -87,7 +94,7 @@ export function render(runs: readonly RenderedRun[]): void {
     }
   }
 
-  if (supportsHighlights) {
+  if (supportsHighlights()) {
     highlight = new Highlight();
     for (const run of runs) for (const range of run.ranges) highlight.add(range);
     CSS.highlights.set(HIGHLIGHT_NAME, highlight);
@@ -110,12 +117,17 @@ export function render(runs: readonly RenderedRun[]): void {
 }
 
 export function clear(): void {
-  if (supportsHighlights) {
+  if (supportsHighlights()) {
     CSS.highlights.delete(HIGHLIGHT_NAME);
     highlight = null;
   } else {
     for (const span of document.querySelectorAll(`.${FALLBACK_CLASS}`)) {
+      const parent = span.parentNode;
       span.replaceWith(...span.childNodes);
+      // Re-join what the wrapper split. Without this every paint/clear cycle fragments the
+      // page's text nodes a little further, and the provenance offsets recorded by
+      // extract.ts -- which are offsets *into a specific text node* -- stop resolving.
+      parent?.normalize();
     }
   }
   for (const block of decorated) {

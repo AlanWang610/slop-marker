@@ -1,20 +1,17 @@
 /**
- * The content script: extract -> language gate -> chunk -> hash -> score -> aggregate ->
- * highlight (scope.md 7, 8, 9).
+ * The content script's wiring: port lifecycle, observers, storage, painting.
  *
- * Aggregation is per *document*, not per block. scope.md 8's document prior counts how many
- * of the page's chunks clear `t_off`, and runs extend across neighbouring chunks -- so the
- * whole page's chunks form one ordered sequence, and a run may span block boundaries.
+ * All the logic that decides *what* gets scored and *what* gets highlighted lives in
+ * pipeline.ts, which has no browser dependencies and is unit-tested. This file is the part
+ * that can only be exercised in a real browser, so it is kept as thin as it can be.
  *
  * Nothing here is stateful across passes. Re-scoring after a DOM mutation re-runs the same
  * pure function over the same inputs, which is what makes scope.md 8's hysteresis spatial
  * rather than temporal: the same page always renders the same way.
  */
 
-import { aggregate, type Chunk } from "../shared/aggregate.js";
 import { type Calibration, withThresholdOverride } from "../shared/calibration.js";
-import { chunkSpans } from "../shared/chunking.js";
-import { contentHash, countWords, toCodePoints } from "../shared/normalize.js";
+import { contentHash } from "../shared/normalize.js";
 import {
   KEEPALIVE_MS,
   PORT_NAME,
@@ -22,22 +19,12 @@ import {
   type HostMessage,
   type ScoreRequest,
 } from "../shared/protocol.js";
-import { type Block, contentRoot, extractBlocks, rangeFor } from "./extract.js";
-import { isScoreable } from "./langgate.js";
-import { render, type RenderedRun } from "./render.js";
+import { extractBlocks, pinRoot } from "./extract.js";
+import { buildChunks, computeRuns, priorityFor, type PageChunk } from "./pipeline.js";
+import { render } from "./render.js";
 
-/** One scoreable unit: a span of one block's collapsed text. */
-interface PageChunk {
-  readonly block: Block;
-  readonly start: number;
-  readonly end: number;
-  readonly text: string;
-  readonly words: number;
-  hash: string;
-  logit: number | null;
-  /** Viewport distance in screens; 0 is on-screen. Lower is scored first. */
-  priority: number;
-}
+/** Silence longer than this, with chunks still unscored, means the port is not working. */
+const STALL_MS = 20_000;
 
 let calibration: Calibration | null = null;
 /** Set from the options page; re-derives t_off so the hysteresis band survives. */
@@ -47,87 +34,15 @@ let port: chrome.runtime.Port | null = null;
 let allowed = true;
 let renderScheduled = false;
 
-/* ------------------------------------------------------------------ extraction */
-
-function buildChunks(cal: Calibration): PageChunk[] {
-  const out: PageChunk[] = [];
-  for (const block of extractBlocks()) {
-    if (countWords(block.text) < cal.min_words) continue;
-    if (!isScoreable(block.text)) continue;
-
-    const cp = toCodePoints(block.text);
-    for (const [start, end] of chunkSpans(block.text, cal.min_words, 400)) {
-      const text = cp.slice(start, end).join("");
-      out.push({
-        block,
-        start,
-        end,
-        text,
-        words: countWords(text),
-        hash: "",
-        logit: null,
-        priority: Number.POSITIVE_INFINITY,
-      });
-    }
-  }
-  return out;
-}
-
-/* ------------------------------------------------------------------ priority */
-
-function updatePriorities(): void {
-  const height = window.innerHeight || 1;
-  for (const chunk of chunks) {
-    const rect = chunk.block.element.getBoundingClientRect();
-    if (rect.bottom >= 0 && rect.top <= height) {
-      chunk.priority = 0;
-    } else if (rect.top > height) {
-      chunk.priority = (rect.top - height) / height;
-    } else {
-      chunk.priority = -rect.bottom / height;
-    }
-  }
-}
-
 /* ------------------------------------------------------------------ rendering */
 
-/**
- * Aggregate and paint. Runs only once every chunk has a score, because scope.md 8's
- * document prior depends on the whole page: painting a partial page would flash highlights
- * that the prior later withdraws.
- */
 function paint(): void {
-  if (calibration === null || chunks.length === 0) return;
-  if (chunks.some((c) => c.logit === null)) return;
-
+  if (calibration === null) return;
   const cal =
     thresholdOverride === null
       ? calibration
       : withThresholdOverride(calibration, thresholdOverride);
-  const input: Chunk[] = chunks.map((c) => ({ logit: c.logit!, words: c.words }));
-  const result = aggregate(input, cal);
-
-  const runs: RenderedRun[] = [];
-  for (const run of result.runs) {
-    if (!run.flagged) continue;
-    const ranges: Range[] = [];
-    const blocks = new Set<Element>();
-    for (let i = run.start; i <= run.end; i++) {
-      const chunk = chunks[i]!;
-      const range = rangeFor(chunk.block, chunk.start, chunk.end);
-      if (range !== null) ranges.push(range);
-      blocks.add(chunk.block.element);
-    }
-    if (ranges.length === 0) continue;
-    runs.push({
-      ranges,
-      blocks: [...blocks],
-      score: run.score,
-      words: run.words,
-      modelVersion: cal.version,
-    });
-  }
-  render(runs);
+  render(computeRuns(chunks, cal));
 }
 
 function schedulePaint(): void {
@@ -139,24 +54,103 @@ function schedulePaint(): void {
   });
 }
 
-/* ------------------------------------------------------------------ transport */
+/* ------------------------------------------------------------------ priority */
 
-function post(message: ContentMessage): void {
-  try {
-    port?.postMessage(message);
-  } catch {
-    // Disconnected; onDisconnect will reconnect and re-send.
+let viewport: IntersectionObserver | null = null;
+
+/**
+ * Viewport-distance priority (scope.md 7.4). The observer's one-screen `rootMargin` is what
+ * makes it fire *before* a block scrolls in, so the chunk is already queued at priority 0 by
+ * the time the reader reaches it.
+ *
+ * Priority is measured against the real viewport rather than `entry.rootBounds`, which is
+ * the margin-expanded box: against that, everything within a screen would tie at 0 and the
+ * queue would lose the ordering it exists for.
+ */
+/** Block element -> its chunks, so a callback costs O(entries) rather than O(entries x chunks). */
+let byElement = new Map<Element, PageChunk[]>();
+
+function watchViewport(): void {
+  viewport?.disconnect();
+  viewport = new IntersectionObserver(onIntersect, { rootMargin: "100% 0px" });
+
+  byElement = new Map();
+  for (const chunk of chunks) {
+    const existing = byElement.get(chunk.block.element);
+    if (existing === undefined) byElement.set(chunk.block.element, [chunk]);
+    else existing.push(chunk);
+  }
+  for (const element of byElement.keys()) viewport.observe(element);
+}
+
+function onIntersect(entries: IntersectionObserverEntry[]): void {
+  const height = window.innerHeight || 1;
+  const changed: Record<string, number> = {};
+  for (const entry of entries) {
+    const priority = priorityFor(entry.boundingClientRect, height);
+    for (const chunk of byElement.get(entry.target) ?? []) {
+      chunk.priority = priority;
+      if (chunk.logit === null && chunk.hash !== "") changed[chunk.hash] = priority;
+    }
+  }
+  if (Object.keys(changed).length > 0) post({ type: "reprioritize", priorities: changed });
+}
+
+/**
+ * Seed priorities synchronously before the first request goes out. The observer's first
+ * callback is asynchronous, and without this the whole first batch would be queued at
+ * Infinity and drained in arbitrary order -- which is exactly the case viewport-first
+ * scheduling is for.
+ */
+function seedPriorities(): void {
+  const height = window.innerHeight || 1;
+  for (const chunk of chunks) {
+    chunk.priority = priorityFor(chunk.block.element.getBoundingClientRect(), height);
   }
 }
+
+/* ------------------------------------------------------------------ transport */
+
+/**
+ * Send, or notice that we cannot and start getting the port back.
+ *
+ * Waiting for `onDisconnect` alone is not enough. A terminated service worker can leave the
+ * port looking present until the next write throws, and a write attempted while `port` is
+ * null used to be a silent no-op with nothing to re-send it -- so a rescan that happened to
+ * land in that window was lost for good and the new content was never scored. Every path
+ * out of here either delivers the message or schedules a reconnect that re-asks for
+ * everything still outstanding (scope.md 7.4).
+ */
+function post(message: ContentMessage): void {
+  if (port === null) {
+    scheduleReconnect(0);
+    return;
+  }
+  try {
+    port.postMessage(message);
+  } catch {
+    port = null;
+    scheduleReconnect(0);
+  }
+}
+
+/**
+ * When the host last said anything, or we last asked it something. Drives the stall
+ * watchdog in `observe()`.
+ */
+let lastProgressAt = Date.now();
 
 function requestOutstanding(): void {
   const items: ScoreRequest[] = chunks
     .filter((c) => c.logit === null)
     .map((c) => ({ hash: c.hash, text: c.text, words: c.words, priority: c.priority }));
-  if (items.length > 0) post({ type: "score", items });
+  if (items.length === 0) return;
+  lastProgressAt = Date.now();
+  post({ type: "score", items });
 }
 
 function onMessage(raw: unknown): void {
+  lastProgressAt = Date.now();
   const message = raw as HostMessage;
   switch (message.type) {
     case "ready":
@@ -186,58 +180,77 @@ function onMessage(raw: unknown): void {
   }
 }
 
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Reconnect and re-ask for whatever has not come back yet. Covers a Chrome service worker
+ * restart and a Firefox event page unload with the same code (scope.md 7.4).
+ */
+function scheduleReconnect(delay = 500): void {
+  if (reconnectTimer !== null || !allowed) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (!allowed) return;
+    connect();
+    if (calibration !== null) requestOutstanding();
+  }, delay);
+}
+
 function connect(): void {
-  port = chrome.runtime.connect({ name: PORT_NAME });
+  try {
+    port = chrome.runtime.connect({ name: PORT_NAME });
+  } catch (err) {
+    // The extension was reloaded or removed under us, so this content script is orphaned
+    // and no amount of retrying will help. Stop rather than spinning. Worth one line: an
+    // orphaned content script and a page with no AI text on it look identical.
+    console.warn("slop-marker: extension context is gone, stopping —", err);
+    allowed = false;
+    port = null;
+    return;
+  }
   port.onMessage.addListener(onMessage);
   port.onDisconnect.addListener(() => {
     port = null;
-    // Covers a Chrome service worker restart and a Firefox event page unload identically
-    // (scope.md 7.4). Reconnect and re-ask for whatever has not come back yet.
-    setTimeout(() => {
-      if (!allowed) return;
-      connect();
-      post({ type: "hello" });
-      if (calibration !== null) requestOutstanding();
-    }, 500);
+    scheduleReconnect();
   });
   post({ type: "hello" });
 }
 
 /* ------------------------------------------------------------------ lifecycle */
 
+let root: Element | null = null;
+
+/** The held content root; see `pinRoot` for why it is held rather than re-derived. */
+function pinnedRoot(): Element {
+  root = pinRoot(root);
+  return root;
+}
+
 async function start(): Promise<void> {
   if (calibration === null || !allowed) return;
-  chunks = buildChunks(calibration);
-  if (chunks.length === 0) return;
+  chunks = buildChunks(calibration, extractBlocks(pinnedRoot()));
 
   await Promise.all(
     chunks.map(async (chunk) => {
       chunk.hash = await contentHash(chunk.text);
     }),
   );
-  updatePriorities();
+  seedPriorities();
   requestOutstanding();
+
+  // Unconditionally, even with nothing to score yet. A client-rendered page has no prose at
+  // document_idle -- which is precisely the case scope.md 7.1's MutationObserver exists for
+  // -- so returning early here would leave the observer uninstalled on exactly those pages
+  // and they would never be scored at all.
   observe();
 }
 
-let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-function onScroll(): void {
-  if (scrollTimer !== null) return;
-  scrollTimer = setTimeout(() => {
-    scrollTimer = null;
-    updatePriorities();
-    const priorities: Record<string, number> = {};
-    for (const chunk of chunks) if (chunk.logit === null) priorities[chunk.hash] = chunk.priority;
-    if (Object.keys(priorities).length > 0) post({ type: "reprioritize", priorities });
-  }, 200);
-}
-
 let mutationTimer: ReturnType<typeof setTimeout> | null = null;
-function observe(): void {
-  window.addEventListener("scroll", onScroll, { passive: true });
+let mutations: MutationObserver | null = null;
 
-  // SPAs: re-run extraction on added subtrees, debounced (scope.md 7.1).
-  const observer = new MutationObserver((records) => {
+/** Watch the pinned root for added subtrees, debounced (scope.md 7.1). */
+function watchMutations(): void {
+  mutations ??= new MutationObserver((records) => {
     const added = records.some((r) => r.addedNodes.length > 0);
     if (!added) return;
     if (mutationTimer !== null) clearTimeout(mutationTimer);
@@ -246,13 +259,43 @@ function observe(): void {
       void rescan();
     }, 500);
   });
-  observer.observe(contentRoot(), { childList: true, subtree: true });
+  mutations.disconnect();
+  mutations.observe(pinnedRoot(), { childList: true, subtree: true });
+}
 
-  // Port traffic resets the Firefox event-page idle timer (scope.md 6.2). Only while there
-  // is on-screen work outstanding, so an idle tab lets the page unload as it should.
+function observe(): void {
+  watchViewport();
+  watchMutations();
+
   setInterval(() => {
-    const pending = chunks.some((c) => c.logit === null && c.priority <= 1);
-    if (pending) post({ type: "keepalive" });
+    const outstanding = chunks.filter((c) => c.logit === null);
+    if (outstanding.length === 0) return;
+
+    // Port traffic resets the Firefox event-page idle timer (scope.md 6.2). Only while
+    // there is on-screen work, so an idle tab lets the page unload as it should.
+    if (outstanding.some((c) => c.priority <= 1)) post({ type: "keepalive" });
+
+    if (Date.now() - lastProgressAt < STALL_MS) return;
+
+    /**
+     * Nothing has come back for a while with work still outstanding, so start the port
+     * over.
+     *
+     * `onDisconnect` is not a sufficient signal on its own. A port to a service worker that
+     * has been terminated can stay writable and simply swallow what is posted into it --
+     * measured: the worker restarts, the content script's port never reports a disconnect,
+     * and every score request after that point is lost. The failure is invisible, because a
+     * page that is never scored looks exactly like a page with nothing to flag. So the only
+     * reliable evidence is silence, and this acts on it.
+     */
+    lastProgressAt = Date.now();
+    try {
+      port?.disconnect();
+    } catch {
+      /* already gone */
+    }
+    port = null;
+    scheduleReconnect(0);
   }, KEEPALIVE_MS);
 }
 
@@ -260,7 +303,10 @@ function observe(): void {
 async function rescan(): Promise<void> {
   if (calibration === null || !allowed) return;
   const known = new Map(chunks.filter((c) => c.logit !== null).map((c) => [c.hash, c.logit!]));
-  const next = buildChunks(calibration);
+  const previousRoot = root;
+  const next = buildChunks(calibration, extractBlocks(pinnedRoot()));
+  // A wholesale client-side navigation replaces the root; follow it with the observer.
+  if (root !== previousRoot) watchMutations();
   await Promise.all(
     next.map(async (chunk) => {
       chunk.hash = await contentHash(chunk.text);
@@ -268,7 +314,8 @@ async function rescan(): Promise<void> {
     }),
   );
   chunks = next;
-  updatePriorities();
+  seedPriorities();
+  watchViewport();
   requestOutstanding();
   schedulePaint();
 }
