@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from slopmarker.corpus.heuristics import signals
+from slopmarker.corpus.heuristics import genre_from_text, signals
 from slopmarker.corpus.hosts import classify_url, is_corporate_host, registered_domain
 
 
@@ -103,3 +103,58 @@ class TestSignals:
 
     def test_title_used_when_body_has_no_lines(self) -> None:
         assert signals("", title="7 Tips for Better Sleep").listicle_title
+
+
+class TestGenreFromText:
+    """Text-only genre assignment. The AI side has no URL, so a URL-derived human
+    label and a prompt-derived AI label would make the labelling process itself
+    carry the class -- which is exactly the leak the auxiliary head would amplify."""
+
+    @pytest.mark.parametrize(
+        ("genre", "text"),
+        [
+            (
+                "press_release",
+                "ACME CORP, London, March 3, 2021 - Acme today announced that our new "
+                "platform helps customers. Our team is excited.\n\nAbout Acme Corporation:\n"
+                "We are a leading provider.",
+            ),
+            (
+                "product_marketing",
+                "Material: wool\nColour: blue\nSize: 3x5\nSKU 12345\nFree shipping. Add to cart.",
+            ),
+            (
+                "academic_formal",
+                "The results (2019) agree with prior work [12]. See Smith et al. (2020). "
+                "Further analysis [7] confirms it.",
+            ),
+            (
+                "technical_docs",
+                "Run `npm install` first. Then import the module. Use `pip install foo` if needed.",
+            ),
+            (
+                "forum_comment",
+                "I tried this myself and my setup broke. I am not sure why. Anyone else seen this?",
+            ),
+        ],
+    )
+    def test_assigns_expected_genre(self, genre: str, text: str) -> None:
+        assert genre_from_text(text)[0] == genre
+
+    def test_long_first_person_prose_is_a_blog_not_a_forum_post(self) -> None:
+        text = (
+            " ".join(["I rebuilt my kitchen and my partner thought I was mad."] * 4)
+            + " "
+            + (" ".join(["The plumbing took three weekends of patient work."] * 20))
+        )
+        assert genre_from_text(text)[0] == "blog_personal"
+
+    def test_falls_back_rather_than_guessing(self) -> None:
+        genre, confidence = genre_from_text("The committee met on Tuesday. The report ran long.")
+        assert genre in {"blog_personal", "news"}
+        assert confidence <= 0.4, "an unmatched document must report low confidence"
+
+    def test_never_returns_other(self) -> None:
+        """Everything gets a genre; 'other' is what this function exists to remove."""
+        for text in ("", "x", "The quick brown fox jumps over the lazy dog."):
+            assert genre_from_text(text)[0] != "other"

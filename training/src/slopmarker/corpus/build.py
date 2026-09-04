@@ -24,6 +24,7 @@ from ..data.windows import sample_windows
 from .config import CorpusConfig
 from .decontam import RaidIndex
 from .dedup import cap_per_cluster, cluster_near_duplicates, cluster_sizes, exact_duplicates
+from .heuristics import genre_from_text
 from .state import read_shard, shard_path, write_shard
 
 WINDOW_SHARD_ROWS = 50_000
@@ -56,6 +57,18 @@ def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
         return stats
 
     by_id = {doc.doc_id: doc for doc in documents}
+
+    # 0. Genre for anything no URL rule matched, from the text alone. Text-only is
+    #    required rather than convenient: the AI side has no URL, so a URL-derived
+    #    human label and a prompt-derived AI label would make the labelling process
+    #    itself carry the class.
+    relabelled = 0
+    for doc in by_id.values():
+        if doc.genre == "other":
+            doc.genre, doc.genre_confidence = genre_from_text(doc.text)  # type: ignore[assignment]
+            doc.genre_source = "rule"
+            relabelled += 1
+    stats["genre_relabelled_from_text"] = relabelled
 
     # 1. Exact duplicates, over the hash-normalized form.
     duplicates = exact_duplicates((doc.doc_id, doc.text) for doc in documents)

@@ -99,3 +99,62 @@ def signals(text: str, title: str = "") -> Signals:
         listicle_phrases=len(LISTICLE_PHRASE.findall(text)),
         we_our_rate=len(FIRST_PERSON_PLURAL.findall(text)) / n_words,
     )
+
+
+# Text-only genre assignment, for documents no URL rule matched.
+#
+# Text-only is a requirement, not a convenience. The AI side has no URL at all, so if
+# human genre came from URLs and AI genre came from prompts, the labelling *process*
+# would carry the class and scope.md 4.4's auxiliary head would amplify that leak
+# rather than suppress it. The same function runs over both sides.
+FIRST_PERSON_SINGULAR = re.compile(r"\b(i|me|my|mine|myself)\b", re.I)
+CITATION = re.compile(r"\(\d{4}\)|\[\d{1,3}\]|\bet al\.|\bdoi:", re.I)
+CODE_MARK = re.compile(r"`[^`]+`|^\s{4}\S|\b(function|import|def|class|npm|pip|sudo)\b", re.M)
+ENCYCLOPEDIC = re.compile(
+    r"\b(is a|was a|refers to|is an?\s+\w+\s+(that|which))\b.{0,80}\b(born|located|founded"
+    r"|established|genus|species|term|concept)\b",
+    re.I,
+)
+# A newswire dateline: a place, a date, then a dash. The place often carries commas
+# ("ACME CORP, London, March 3, 2021 -"), so only the date and dash are pinned.
+DATELINE = re.compile(
+    r"^[^\n]{0,70}\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+"
+    r"\d{1,2},?\s+\d{4}\s*[-\u2013\u2014]",
+    re.M,
+)
+ABOUT_BOILERPLATE = re.compile(r"^\s*About [A-Z][\w &.]{2,40}:?\s*$", re.M)
+
+
+def genre_from_text(text: str, title: str = "") -> tuple[str, float]:
+    """Assign one of the eight genres from the text alone.
+
+    Returns (genre, confidence). Order matters: the most specific signals are tested
+    first, and the fallback is the generic web-prose bucket rather than a guess.
+    """
+    shape = signals(text, title)
+    words = text.split()
+    n_words = max(1, len(words))
+
+    if (DATELINE.search(text) or ABOUT_BOILERPLATE.search(text)) and shape.we_our_rate > 0.004:
+        return "press_release", 0.7
+    if shape.looks_templated_product:
+        return "product_marketing", 0.7
+    if shape.looks_marketing or (shape.looks_listicle and shape.cta_count):
+        return "product_marketing", 0.6
+    if len(CITATION.findall(text)) >= 3:
+        return "academic_formal", 0.7
+    if len(CODE_MARK.findall(text)) >= 3:
+        return "technical_docs", 0.6
+    if ENCYCLOPEDIC.search(text[:400]) and shape.we_our_rate < 0.002:
+        return "encyclopedia", 0.6
+    first_person = len(FIRST_PERSON_SINGULAR.findall(text)) / n_words
+    # A forum comment is short *and* conversational; a short first-person passage that
+    # addresses nobody is far more likely to be a blog excerpt.
+    conversational = "?" in text or re.search(r"(you|your|anyone|thanks|edit:)", text, re.I)
+    if first_person > 0.015 and n_words < 250 and conversational:
+        return "forum_comment", 0.6
+    if first_person > 0.008:
+        return "blog_personal", 0.6
+    if shape.looks_seo_structured or shape.looks_listicle:
+        return "product_marketing", 0.5
+    return "blog_personal", 0.3
