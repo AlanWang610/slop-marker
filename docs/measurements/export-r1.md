@@ -43,15 +43,26 @@ and the split (val to calibration/test). Scoring both full splits with PyTorch
 separated them -- test at 0.9939 is if anything higher than val, so the split is not
 the explanation and the model is intact.
 
-That leaves quantization. The op list is `["MatMul", "Gather"]`, and the `Gather` is
-the 50,368 x 768 embedding table. scope.md 5.4 adds it to reach the ~150 MB the spec
-quotes: `MatMul` alone leaves the embeddings in fp32 and lands at ~266 MB. Per-tensor
-int8 across an embedding table whose rows have very different norms is the most
-destructive step available in this pipeline, and it was chosen to hit a file size.
+That leaves quantization, and the first hypothesis was wrong. `onnx_export.py` named
+the embedding `Gather` in its own module docstring as "the riskiest step in this
+pipeline for a detector whose signal is lexical", so the `Gather` was the obvious
+suspect. Measured, it is not: leaving the embedding table entirely in fp32 scores
+0.8027 against the 0.8103 that quantizes it. The docstring read as evidence because it
+was confidently written, but nothing in it had been measured.
 
-`onnx_export.py` said so in its own module docstring -- "the riskiest step in this
-pipeline for a detector whose signal is lexical" -- and then included it anyway,
-"gated on a measured accuracy delta" that was never measured.
+Two real causes were found, in order:
+
+1. `extra_options={"MatMulConstBOnly": False}`. ONNX Runtime defaults this to True,
+   restricting quantization to MatMuls with a constant B operand -- the weights. False
+   also quantizes the activation-by-activation products inside attention, Q.K^T and
+   attn.V, which hold no weights and degrade badly in int8. Fixing it recovered 17
+   points of AUROC. The node count had said so all along: ModernBERT-base has
+   22 x 4 weight MatMuls plus a two-MatMul head, so 90 is correct and the export
+   produced 136. The assertion was `>= 80` with no ceiling, so quantizing half again
+   too much looked exactly like quantizing correctly.
+2. Dynamic quantization of *activations*, which no op list can switch off. This is what
+   still cost 4-6 points of pAUC afterwards, and it is why the fix is weight-only
+   quantization rather than a better dynamic recipe. See the recipe table below.
 
 ## Calibration on the broken artifact
 
@@ -86,12 +97,16 @@ split technical_docs has 974 human windows, not 57.
 
 | condition | threshold |
 |---|---|
-| Spearman, int8 vs fp32 on identical rows | >= 0.995 |
+| int8-vs-fp32 comparison on identical rows | must have run |
 | AUROC drop | <= 0.01 |
 | pAUC@2%FPR drop | <= 0.01 |
+| decision flip rate | <= 0.01 |
+| Spearman | >= 0.95 (see the revision below) |
 | per-genre FPR upper bound (Clopper-Pearson) on test | <= 0.02 |
 | human windows per genre backing that bound | >= 500 |
 | parity / quantization / graph sections | present and passing |
+| `MatMulInteger` node count | within [80, 100], both ends |
+| `GatherBlockQuantized` present when the table is meant to be quantized | required |
 
 A missing comparison is a failure, not a pass. That is the specific way the original
 path was wrong: absence of evidence read as evidence of correctness.
