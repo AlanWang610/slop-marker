@@ -953,6 +953,12 @@ def document_eval(
             "flagged": bool(flagged),
             "flagged_words": sum(r.words for r in flagged),
             "max_run_score": max((r.score for r in result.runs), default=0.0),
+            # The ranking score, and it must not be max_run_score. Runs exist only above
+            # t_on, so every document without one takes the same default and the classes
+            # pile up tied at a single value -- which makes AUROC a statement about the
+            # ties rather than the model. The strongest penalized chunk is always
+            # defined and orders documents that never fire.
+            "max_chunk_p": max(result.chunk_p_penalized, default=0.0),
         }
 
     documents: list[dict[str, Any]] = []
@@ -1060,9 +1066,18 @@ def document_eval(
         report["doc_level_fpr_upper"] = clopper_pearson_upper(flagged, len(human_rows))
     if human_rows and ai_rows:
         report["doc_auroc"] = auroc(
+            np.array([r["max_chunk_p"] for r in human_rows]),
+            np.array([r["max_chunk_p"] for r in ai_rows]),
+        )
+        report["doc_auroc_run_score"] = auroc(
             np.array([r["max_run_score"] for r in human_rows]),
             np.array([r["max_run_score"] for r in ai_rows]),
         )
+        report["fraction_with_no_run"] = sum(1 for r in results if r["max_run_score"] == 0.0) / len(
+            results
+        )
+        report["median_words"] = float(np.median([r["words"] for r in results]))
+        report["median_chunks"] = float(np.median([r["n_chunks"] for r in results]))
 
     for label, key in (("by_domain", "domain"), ("by_attack", "attack")):
         grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
