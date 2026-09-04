@@ -90,9 +90,22 @@ which looks exactly like a page the model declined to flag.
 `storage.local.lastError` as well as logged, because otherwise a Host that cannot start is
 indistinguishable from a page with no AI text on it.
 
+## Firefox packaging
+
+`web-ext lint --source-dir dist/firefox` reports **0 errors**. Three of the four warnings
+come from the bundled ONNX Runtime glue and are inherent to running WASM — one
+`DANGEROUS_EVAL` (the `Function` constructor) and two `UNSAFE_VAR_ASSIGNMENT` (the dynamic
+`import()` of the runtime loader). They need explaining at AMO review; they do not block
+unlisted signing. The fourth is `KEY_FIREFOX_ANDROID_UNSUPPORTED_BY_MIN_VERSION`, which is
+moot — mobile is a §1 non-goal.
+
+The manifest declares `data_collection_permissions: { required: ["none"] }`, which AMO now
+requires and which is simply accurate: all inference is on-device and nothing is persisted
+beyond the local caches (§1, §11).
+
 ## Known gaps
 
-- **Firefox has never been run.** The build is produced and its manifest is correct, but no
+- **Firefox has never been run.** The build lints clean and its manifest is correct, but no
   Firefox has loaded it. `web-ext run --source-dir dist/firefox` is the next step.
 - **The offscreen wrapper is unverified.** Headless Chromium creates offscreen documents but
   never executes their scripts, so `e2e/run.mjs` opens `host.html` as an ordinary tab. Same
