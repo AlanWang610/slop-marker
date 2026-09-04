@@ -960,24 +960,43 @@ def document_eval(
         from datasets import load_dataset
 
         # The train split is labelled and public; test is leaderboard-held-out.
+        #
+        # Rows are ordered by domain, so taking a prefix of the stream samples one
+        # domain and calls it RAID. The first run of this eval did exactly that and
+        # returned 1,493 rows all from `abstracts`. Quotas per (domain, class, attacked)
+        # cell instead, with shard shuffling so the scan does not start at the same
+        # domain every time, and the scan cap is reported rather than assumed adequate.
         stream = load_dataset("liamdugan/raid", split="train", streaming=True)
-        pool: list[dict[str, Any]] = []
-        for index, row in enumerate(stream):
-            if index >= limit * 40:
+        stream = stream.shuffle(seed=0, buffer_size=20_000)
+        per_cell = max(8, limit // 32)
+        cells: dict[tuple[str, bool, bool], list[dict[str, Any]]] = defaultdict(list)
+        scanned = 0
+        for row in stream:
+            scanned += 1
+            if scanned > limit * 400:
                 break
-            pool.append(
+            is_ai = row["model"] != "human"
+            attack = row.get("attack") or "none"
+            key = (row.get("domain", "unknown"), is_ai, attack != "none")
+            if len(cells[key]) >= per_cell:
+                continue
+            cells[key].append(
                 {
                     "text": row["generation"],
-                    "is_ai": row["model"] != "human",
+                    "is_ai": is_ai,
                     "domain": row.get("domain", "unknown"),
-                    "attack": row.get("attack", "none"),
+                    "attack": attack,
                 }
             )
+            if len(cells) >= 32 and all(len(v) >= per_cell for v in cells.values()):
+                break
+        pool = [row for rows_ in cells.values() for row in rows_]
         rng.shuffle(pool)
-        # RAID is overwhelmingly AI; a flat sample would carry almost no human rows.
-        human = [r for r in pool if not r["is_ai"]][: limit // 2]
-        ai = [r for r in pool if r["is_ai"]][: limit - len(human)]
-        documents = human + ai
+        documents = pool[:limit]
+        print(
+            f"RAID scan: {scanned} rows, {len(cells)} cells, "
+            f"domains={sorted({d for d, _, _ in cells})}"
+        )
     else:
         by_id = {d.doc_id: d for d in load_documents(root, "interim")}
         train_hosts = set()
