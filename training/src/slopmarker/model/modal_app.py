@@ -658,11 +658,24 @@ def quantization_sweep(
         return out
 
     baseline = run(fp32)
+    # const_b_only False is what the first export shipped: it quantizes the attention
+    # products as well as the weights. The four const_b_only=True rows are the recipes
+    # actually worth choosing between; the False rows stay in so the comparison is on
+    # the record rather than asserted.
     variants = {
-        "matmul_only": {"quantize_embeddings": False, "per_channel": False},
-        "matmul_only_per_channel": {"quantize_embeddings": False, "per_channel": True},
-        "matmul_gather": {"quantize_embeddings": True, "per_channel": False},
-        "matmul_gather_per_channel": {"quantize_embeddings": True, "per_channel": True},
+        "weights_only": {"quantize_embeddings": False, "const_b_only": True},
+        "weights_only_per_channel": {
+            "quantize_embeddings": False,
+            "per_channel": True,
+            "const_b_only": True,
+        },
+        "weights_gather": {"quantize_embeddings": True, "const_b_only": True},
+        "weights_gather_per_channel": {
+            "quantize_embeddings": True,
+            "per_channel": True,
+            "const_b_only": True,
+        },
+        "all_matmul_gather": {"quantize_embeddings": True, "const_b_only": False},
     }
     results: dict[str, Any] = {}
     for name, kwargs in variants.items():
@@ -672,6 +685,7 @@ def quantization_sweep(
         results[name] = {"quantization": quantization, "comparison": comparison}
         print(
             f"{name}: {quantization['int8_mb']:.0f}MB"
+            f" nodes {quantization['matmul_integer_nodes']}"
             f" auroc {comparison['fp32']['auroc']:.4f} -> {comparison['int8']['auroc']:.4f}"
             f" spearman {comparison['spearman']:.4f}"
         )

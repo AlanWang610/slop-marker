@@ -30,8 +30,12 @@ OPSET = 17
 PARITY_SEQ_LENS = (64, 128, 256, 384, 512)
 PARITY_BATCH_SIZES = (1, 4)
 PARITY_TOLERANCE = 1e-3
-# 22 layers x {Wqkv, Wo, Wi, Wo} -- if far fewer survive, quantization silently skipped.
+# 22 layers x {Wqkv, Wo, Wi, Wo} = 88, plus a two-matmul head. Too few means
+# quantization was silently skipped. Too many means it reached MatMuls that have no
+# constant operand -- the Q.K^T and attn.V products inside attention -- which is worse
+# than skipping, because those quantize badly and nothing about the file size says so.
 MIN_MATMUL_INTEGER_NODES = 80
+MAX_MATMUL_INTEGER_NODES = 100
 
 
 @dataclass
@@ -136,6 +140,7 @@ def quantize_int8(
     *,
     quantize_embeddings: bool = True,
     per_channel: bool = False,
+    const_b_only: bool = True,
 ) -> dict[str, Any]:
     """Dynamic int8 quantization, then assert it actually happened.
 
@@ -146,6 +151,13 @@ def quantize_int8(
     Note that these assertions establish only that quantization *ran*. Whether the
     result still separates the classes is a question no property of the graph can
     answer; `gates.compare_scores` answers it, and `gates.release_gate` enforces it.
+
+    `const_b_only` must stay True. It is ONNX Runtime's default, and it restricts
+    quantization to MatMuls whose B operand is a constant -- the weight matrices. With
+    it False, ORT also quantizes the activation-by-activation products inside attention
+    (Q.K^T and attn.V), which have no weights to quantize and degrade badly when forced
+    through int8. This export ran with it False and produced a model at AUROC 0.80
+    against the checkpoint's 0.99, with 136 MatMulInteger nodes where 90 was correct.
     """
     from onnxruntime.quantization import QuantType, quantize_dynamic
 
@@ -156,10 +168,11 @@ def quantize_int8(
         weight_type=QuantType.QInt8,
         op_types_to_quantize=op_types,
         per_channel=per_channel,
-        extra_options={"MatMulConstBOnly": False},
+        extra_options={"MatMulConstBOnly": const_b_only},
     )
     report = verify_quantized(fp32_path, int8_path, op_types)
     report["per_channel"] = per_channel
+    report["const_b_only"] = const_b_only
     return report
 
 
@@ -188,6 +201,12 @@ def verify_quantized(fp32_path: Path, int8_path: Path, op_types: list[str]) -> d
         problems.append(
             f"only {matmul_integer} MatMulInteger nodes "
             f"(expected >= {MIN_MATMUL_INTEGER_NODES}); quantization was skipped silently"
+        )
+    elif matmul_integer > MAX_MATMUL_INTEGER_NODES:
+        problems.append(
+            f"{matmul_integer} MatMulInteger nodes exceeds {MAX_MATMUL_INTEGER_NODES}; "
+            "quantization reached MatMuls with no constant operand, which in this "
+            "architecture means the attention products. Check MatMulConstBOnly."
         )
     if int8_mb > fp32_mb * 0.75:
         problems.append(f"int8 file is {int8_mb:.0f}MB against fp32 {fp32_mb:.0f}MB; no shrink")
