@@ -190,7 +190,7 @@ version it has already seen**, so re-signing means bumping `version` in
 | Chrome, headless (host as a tab) | 52/52 |
 | Chrome, headed (real offscreen document) | 51/51 |
 | Firefox (geckodriver, real UI) | 27/27 |
-| Firefox, installed from the built `.xpi` | 27/27 |
+| Firefox, installed from the **AMO-signed** `.xpi` | 27/27 |
 | against the published release host | Chrome 42/42, Firefox 27/27 |
 | packaging (`.crx` + `.xpi`, read back) | 8/8 |
 | `web-ext lint` | 0 errors |
@@ -242,16 +242,17 @@ be AI-written, so the *positive* direction is still only tested on generated mar
 pages is also a thin sample -- it says nothing about paywalls, infinite feeds on real
 sites, or lazy images that reflow the page under a highlight.
 
-**The Firefox build is not signed until you sign it.** `npm run package` builds both
-artifacts and reads them back — CRX3 header, signature, central directory — and
-`npm run e2e:firefox:xpi` installs the built `.xpi` and runs the whole Firefox suite against
-it. `--sign` submits to AMO and verifies the signature that comes back, but it needs your
-API credentials, so it is a step someone has to take deliberately. Until then release
-Firefox will not install the result. See "Signing" above.
+**Re-signing needs a version bump.** `0.1.0` is signed and installable; AMO refuses a
+version it has already accepted, so the next signed build needs `version` raised in
+`src/assets/manifest.json` first. The harness installs the signed archive in preference to
+the unsigned one, so `npm run e2e:firefox:xpi` tests what a user actually installs — but
+only as long as someone re-runs `--sign` after changing the extension. An unsigned rebuild
+sitting beside a stale signed archive is the failure mode to watch for.
 
 Chrome has no equivalent step, and its `.crx` is not an install route either: Chrome refuses
 off-store `.crx` files, so unpacked loading is the path for personal use and the `.crx`
-exists to prove the packaging is sound.
+exists to prove the packaging is sound. That asymmetry is worth remembering — the Chrome
+build a user runs is `dist/chrome`, a directory nothing signs and nothing pins.
 
 The Chrome signing key is generated on the first `npm run package` and kept at
 `artifacts/packages/chrome-key.pem`, which is gitignored. It *is* the extension's identity:

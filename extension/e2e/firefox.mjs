@@ -68,12 +68,20 @@ if (!existsSync(join(bundleDir, "model.onnx"))) {
 }
 
 const manifestVersion = JSON.parse(readFileSync(join(dist, "manifest.json"), "utf-8")).version;
-const xpi = join(repo, "artifacts", "packages", `slop-marker-${manifestVersion}.xpi`);
+const packages = join(repo, "artifacts", "packages");
+/**
+ * Prefer the signed archive. It is the only one release Firefox will install, so it is the
+ * artifact worth testing; the unsigned build stands in when signing has not been run.
+ */
+const signedXpi = join(packages, `slop-marker-${manifestVersion}-signed.xpi`);
+const unsignedXpi = join(packages, `slop-marker-${manifestVersion}.xpi`);
+const xpi = existsSync(signedXpi) ? signedXpi : unsignedXpi;
 if (useXpi && !existsSync(xpi)) {
   console.error(`no packaged archive at ${xpi} — run: node scripts/package.mjs --browser=firefox`);
   exit(2);
 }
 const addon = useXpi ? xpi : dist;
+const addonLabel = useXpi ? (xpi === signedXpi ? " (signed)" : " (packaged, unsigned)") : "";
 
 function serveBundle(port) {
   return new Promise((ready) => {
@@ -142,7 +150,7 @@ async function main() {
   const pageServer = await servePage(8788, routes);
   const profile = await mkdtemp(join(tmpdir(), "slop-marker-ff-"));
 
-  console.log(`extension  ${addon}${useXpi ? " (packaged)" : ""}`);
+  console.log(`extension  ${addon}${addonLabel}`);
   console.log(`model      ${VERSION} from ${realHost ? "the real release host" : "http://127.0.0.1:8787"}`);
   console.log(`page       flagged=${flaggedName} clean=${cleanName}\n`);
 

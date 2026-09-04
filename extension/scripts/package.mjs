@@ -266,7 +266,12 @@ async function signFirefox(dist) {
     check("AMO signs the archive", false, "no signed .xpi came back");
     return false;
   }
-  const signed = join(out, produced[0]);
+  // AMO names the file after the add-on's internal id, which is opaque and changes nothing
+  // about the contents. Give it a predictable name so the harness and the install
+  // instructions can both refer to it.
+  const signed = join(out, `slop-marker-${VERSION}-signed.xpi`);
+  rmSync(signed, { force: true });
+  renameSync(join(out, produced[0]), signed);
   check("AMO signs the archive", true, `${signed} (${mb(statSync(signed).size)})`);
 
   // A signed archive carries Mozilla's signature under META-INF. Without this the file
