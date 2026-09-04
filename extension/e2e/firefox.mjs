@@ -248,7 +248,6 @@ async function main() {
           .join(" ")
           .slice(0, 140),
         inFlagged: within("#flagged"),
-        inClean: within("#clean"),
         inNav: within("nav"),
         inFooter: within("footer"),
       };
@@ -256,7 +255,21 @@ async function main() {
 
     check("highlights the AI-authored article", observed.inFlagged > 0, `${observed.inFlagged} blocks`);
     check("uses the CSS Custom Highlight API", observed.rangeCount > 0, `${observed.rangeCount} ranges`);
-    check("leaves the human-authored article alone", observed.inClean === 0, `${observed.inClean} blocks`);
+    // On its own page: contentRoot() returns the first <article>, so a second one on the
+    // same page is never extracted and the assertion would pass for want of being scored.
+    await driver.get("http://127.0.0.1:8788/clean");
+    await new Promise((r) => setTimeout(r, 20_000));
+    const cleanSeen = await driver.executeScript(function () {
+      return {
+        marked: document.querySelectorAll("#clean [data-slop-marker]").length,
+        blocks: document.querySelectorAll("#clean p").length,
+      };
+    });
+    check(
+      "leaves the human-authored article alone",
+      cleanSeen.marked === 0 && cleanSeen.blocks > 0,
+      `${cleanSeen.marked} of ${cleanSeen.blocks} blocks flagged`,
+    );
     check("never scores nav or footer", observed.inNav === 0 && observed.inFooter === 0);
 
     // Options page, reached by clicking the link rather than navigating, for the same

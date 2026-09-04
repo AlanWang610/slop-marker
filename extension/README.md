@@ -93,6 +93,14 @@ parity. A missing runtime file surfaces as a flat "no available backend found".
 **Blocks under `min_words` are skipped.** A page of short paragraphs is scored not at all,
 which looks exactly like a page the model declined to flag.
 
+**A `div` is a candidate only when it holds no block-level element.** Much of the web puts
+prose in bare `div`s, so they cannot be ignored, but they cannot simply be added to the
+candidate list either: the outer-wins nesting rule would let the wrapper `div` around an
+article swallow the page into a single block. The rule is structural — a `div` with no
+block-level descendant is being laid out as a paragraph, so it is treated as one. The cost
+is mixed content: `<div>intro<p>body</p></div>` loses the loose text, which for a detector
+whose value is precision is the cheaper error.
+
 **A Chrome offscreen document has only `chrome.runtime`.** Measured over CDP:
 `Object.keys(chrome)` is `csi, loadTimes, runtime`, and `chrome.storage` is `undefined`.
 Everything else the host needs is a web API and is present — `caches`, `indexedDB`,
@@ -126,6 +134,17 @@ produced two blocks over the same text, double-counting it in the §8 document p
 `<li><p>Alpha.</p><p>Beta.</p></li>` walks to `Alpha.Beta.` unless extraction inserts the
 space itself: one word short, and a token the model never saw. Hand-written test pages are
 pretty-printed and hide this; most of the real web is not.
+
+**`contentRoot()` returns the *first* `<article>`, and everything else on the page is
+invisible.** Two articles, and only the first is ever extracted — which is how the harness
+spent its whole life asserting that a human-authored article was not flagged when in truth
+it was never scored at all. Any assertion about text not being flagged has to establish
+that the text was extracted in the first place, or it passes for the wrong reason.
+
+**A negative assertion needs enough words to be able to fail.** scope.md 8 flags nothing
+under a 150-word run, so "this human document was not flagged" is arithmetic rather than
+evidence unless the document clears that bar. The clean e2e page uses the longest clean
+fixture document for exactly this reason, and asserts its own word count first.
 
 **The content root must be pinned, not re-derived.** `contentRoot()` prefers the first
 `<article>`, so recomputing it every pass means an SPA that appends articles as the reader
@@ -186,9 +205,9 @@ version it has already seen**, so re-signing means bumping `version` in
 
 | | |
 |---|---|
-| unit, DOM and cross-language parity | 614 tests across 21 files |
-| Chrome, headless (host as a tab) | 52/52 |
-| Chrome, headed (real offscreen document) | 51/51 |
+| unit, DOM and cross-language parity | 625 tests across 21 files |
+| Chrome, headless (host as a tab) | 56/56 |
+| Chrome, headed (real offscreen document) | 55/55 |
 | Firefox (geckodriver, real UI) | 27/27 |
 | Firefox, installed from the **AMO-signed** `.xpi` | 27/27 |
 | against the published release host | Chrome 42/42, Firefox 27/27 |

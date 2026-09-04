@@ -309,3 +309,81 @@ describe("pinRoot", () => {
     expect(pinRoot(pinRoot(first, document), document)).toBe(first);
   });
 });
+
+describe("div, when it is acting as a paragraph", () => {
+  it("extracts a leaf div holding prose", () => {
+    page(`<div>${PROSE}</div>`);
+    expect(texts()).toEqual([PROSE]);
+  });
+
+  it("extracts a leaf div containing only inline markup", () => {
+    page(`<div>anti<em>dis</em><a href="#">establishment</a></div>`);
+    expect(texts()).toEqual(["antidisestablishment"]);
+  });
+
+  it("treats a div of <br>-separated lines as one block", () => {
+    page(`<div>first line<br>second line</div>`);
+    expect(texts()).toEqual(["first line second line"]);
+  });
+
+  it("skips a div that wraps paragraphs, keeping the paragraphs", () => {
+    page(`<div class="content"><p>Alpha alpha.</p><p>Beta beta.</p></div>`);
+    expect(texts()).toEqual(["Alpha alpha.", "Beta beta."]);
+  });
+
+  it("keeps only the innermost of nested divs", () => {
+    page(`<div class="outer"><div class="mid"><div class="leaf">${PROSE}</div></div></div>`);
+    const blocks = extractBlocks(document.body);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]!.element.className).toBe("leaf");
+  });
+
+  it("never lets a page-level wrapper swallow the whole document", () => {
+    page(
+      `<div id="app"><div id="root"><div>Alpha alpha.</div><div>Beta beta.</div></div></div>`,
+    );
+    expect(texts()).toEqual(["Alpha alpha.", "Beta beta."]);
+  });
+
+  it("is not a leaf when it holds any block-level element", () => {
+    page(`<div>lead text<hr>trailing text</div>`);
+    expect(texts()).toEqual([]);
+  });
+
+  it("prefers the outer candidate when a div sits inside one", () => {
+    page(`<ul><li><div>${PROSE}</div></li></ul>`);
+    const blocks = extractBlocks(document.body);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]!.element.tagName).toBe("LI");
+  });
+
+  it("still honours every exclusion", () => {
+    for (const tag of ["nav", "header", "footer", "aside", "form"]) {
+      page(`<${tag}><div>${PROSE}</div></${tag}>`);
+      expect(texts()).toEqual([]);
+    }
+    page(`<div contenteditable="true"><div>${PROSE}</div></div>`);
+    expect(texts()).toEqual([]);
+  });
+
+  it("scores a framework-rendered article, which is the case this exists for", () => {
+    page(
+      `<div id="app">
+         <div class="Header"><div>Site name</div></div>
+         <div class="Article">
+           <div class="Article-body">${PROSE}</div>
+           <div class="Article-body">A second paragraph, rendered as a div like the first.</div>
+         </div>
+       </div>`,
+    );
+    const out = texts();
+    expect(out).toHaveLength(3); // both body divs, plus the short header div
+    expect(out).toContain(PROSE);
+  });
+
+  it("drops mixed content, which is the documented cost of the rule", () => {
+    page(`<div>loose intro text<p>${PROSE}</p></div>`);
+    // The div is not a leaf, so its own text is lost; the paragraph is still scored.
+    expect(texts()).toEqual([PROSE]);
+  });
+});

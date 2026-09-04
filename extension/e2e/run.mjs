@@ -489,7 +489,6 @@ async function main() {
         highlightedText: ranges.map((r) => r.toString()).join(" ").slice(0, 160),
         markedTotal: marked.length,
         inFlagged: within("#flagged"),
-        inClean: within("#clean"),
         inNav: within("nav"),
         inFooter: within("footer"),
         threading: null,
@@ -504,8 +503,35 @@ async function main() {
     }
     check("highlights the AI-authored article", observed.inFlagged > 0, `${observed.inFlagged} blocks`);
     check("uses the CSS Custom Highlight API", observed.rangeCount > 0, `${observed.rangeCount} ranges`);
-    check("leaves the human-authored article alone", observed.inClean === 0, `${observed.inClean} blocks`);
     check("never scores nav or footer", observed.inNav === 0 && observed.inFooter === 0);
+
+    // On its own page, so that nothing is flagged for want of being extracted, and so that
+    // no neighbouring run can reach it through scope.md 8's hysteresis.
+    const cleanPage = await context.newPage();
+    await cleanPage.goto("http://127.0.0.1:8788/clean", { waitUntil: "domcontentloaded" });
+    await new Promise((r) => setTimeout(r, 3000));
+    await waitForHighlights(cleanPage, 60_000);
+    const cleanSeen = await cleanPage.evaluate(() => ({
+      marked: document.querySelectorAll("#clean [data-slop-marker]").length,
+      blocks: document.querySelectorAll("#clean p").length,
+      words: [...document.querySelectorAll("#clean p")].reduce(
+        (sum, el) => sum + (el.textContent ?? "").split(/\s+/).filter(Boolean).length,
+        0,
+      ),
+    }));
+    // Guard the guard: under scope.md 8's 150-word run minimum a shorter document could
+    // never be flagged, so "not flagged" would be true by arithmetic rather than by model.
+    check(
+      "the clean page is long enough that it could be flagged",
+      cleanSeen.words >= 150,
+      `${cleanSeen.words} words across ${cleanSeen.blocks} blocks`,
+    );
+    check(
+      "leaves the human-authored article alone",
+      cleanSeen.marked === 0 && cleanSeen.blocks > 0,
+      `${cleanSeen.marked} of ${cleanSeen.blocks} blocks flagged`,
+    );
+    await cleanPage.close();
 
     const threading = await setup.evaluate(async () => {
       const s = await chrome.storage.local.get("threading");
@@ -578,6 +604,34 @@ async function main() {
         `${marks[id]} marked`,
       );
     }
+
+    /* ------------------------------------- prose in divs, the framework-site case */
+
+    console.log("\n  framework-rendered page (every paragraph a div):");
+    const framework = await context.newPage();
+    framework.on("pageerror", (e) => console.log(`  [framework] uncaught: ${e.message}`));
+    await framework.goto("http://127.0.0.1:8788/framework", { waitUntil: "domcontentloaded" });
+    await waitForHighlights(framework);
+
+    const fw = await framework.evaluate(() => ({
+      total: document.querySelectorAll("[data-slop-marker]").length,
+      inFlagged: document.querySelectorAll("#flagged [data-slop-marker]").length,
+      // The containers must never themselves become blocks: if one did, it would swallow
+      // the page and the count below would be 1.
+      containers: [...document.querySelectorAll("[data-slop-marker]")].filter((el) =>
+        ["app", "flagged"].includes(el.id),
+      ).length,
+      paragraphs: document.querySelectorAll("p").length,
+    }));
+
+    check("the page really has no paragraphs at all", fw.paragraphs === 0, `${fw.paragraphs} <p>`);
+    check("scores prose written as divs", fw.inFlagged > 0, `${fw.inFlagged} blocks`);
+    check(
+      "never promotes a wrapper div to a block",
+      fw.containers === 0,
+      fw.containers === 0 ? "leaves only leaves" : `${fw.containers} containers marked`,
+    );
+    await framework.close();
 
     /* ------------------------------------------------------ scope.md 9, themes */
 

@@ -48,6 +48,26 @@ const COMMENT_WIDGETS =
 const CANDIDATES = "p,li,blockquote,dd,td";
 
 /**
+ * `div` is a candidate too, but only when it is acting as a paragraph.
+ *
+ * scope.md 7.1 lists five element types, and a great deal of the real web puts its prose in
+ * bare `div`s that match none of them -- so that text was never scored at all. It cannot
+ * simply be added to CANDIDATES, though: the outer-wins nesting rule would then let the
+ * wrapper `div` around an entire article swallow the page into one block.
+ *
+ * The rule is instead structural. A `div` qualifies when it contains no block-level element
+ * anywhere beneath it, which is exactly the case where a browser lays it out as one
+ * paragraph of text. A `div` of `div`s, or one holding `p`s, is a container and is skipped
+ * in favour of what it contains.
+ *
+ * Mixed content -- loose text alongside a block child, as in `<div>intro<p>body</p></div>`
+ * -- loses the loose text. Including the div instead would cover it, but would also readmit
+ * the wrapper case, and for a detector whose whole value is precision, missing a stray
+ * sentence is the cheaper error.
+ */
+const SELECTOR = `${CANDIDATES},div`;
+
+/**
  * Elements that force a word boundary, because a reader sees one.
  *
  * `<li><p>Alpha.</p><p>Beta.</p></li>` has no whitespace text node between the paragraphs
@@ -62,6 +82,14 @@ const BLOCK_LEVEL = new Set([
   "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "PRE", "SECTION", "SUMMARY", "TABLE",
   "TBODY", "TD", "TFOOT", "TH", "THEAD", "TR", "UL",
 ]);
+
+/** Any block-level element, as a selector, for the leaf-div test. */
+const BLOCK_LEVEL_SELECTOR = [...BLOCK_LEVEL].map((tag) => tag.toLowerCase()).join(",");
+
+/** True when this `div` holds text and no block-level element: a paragraph in all but name. */
+function isLeafDiv(element: Element): boolean {
+  return element.querySelector(BLOCK_LEVEL_SELECTOR) === null;
+}
 
 /** Nearest block-level ancestor of `node`, bounded by `root`. */
 function blockAncestor(node: Node, root: Element): Element {
@@ -204,19 +232,33 @@ export function pinRoot(held: Element | null, doc: Document = document): Element
  * never scored twice and never appears in two runs.
  */
 export function extractBlocks(root: Element = contentRoot()): Block[] {
+  const qualifying = [...root.querySelectorAll(SELECTOR)].filter(
+    (element) =>
+      !isExcluded(element) && (element.tagName !== "DIV" || isLeafDiv(element)),
+  );
+
+  /**
+   * A candidate inside another candidate: the outer one already covers this text, and
+   * `collapseWithProvenance` walks descendants, so keeping both would score it twice --
+   * inflating scope.md 8's document prior and letting one paragraph open two runs.
+   *
+   * The ancestor walk is against the *qualifying* set rather than a selector, because with
+   * leaf `div`s the two differ: in `<li><div>text</div></li>` both elements match the
+   * selector, and only knowing that the `li` was kept tells us to drop the `div`.
+   */
+  const kept = new Set(qualifying);
+  for (const element of qualifying) {
+    for (let ancestor = element.parentElement; ancestor !== null; ancestor = ancestor.parentElement) {
+      if (kept.has(ancestor)) {
+        kept.delete(element);
+        break;
+      }
+    }
+  }
+
   const blocks: Block[] = [];
-
-  for (const element of root.querySelectorAll(CANDIDATES)) {
-    if (isExcluded(element)) continue;
-
-    // A candidate inside another candidate: the outer one already covers this text, and
-    // `collapseWithProvenance` walks descendants, so keeping both would score it twice --
-    // inflating scope.md 8's document prior and letting one paragraph open two runs.
-    //
-    // The test is on the *parent*. `element.closest(CANDIDATES)` matches the element
-    // itself, so the obvious-looking `closest(CANDIDATES) !== element` can never fire.
-    if (element.parentElement?.closest(CANDIDATES) != null) continue;
-
+  for (const element of qualifying) {
+    if (!kept.has(element)) continue;
     const { text, provenance } = collapseWithProvenance(element);
     if (text.length === 0) continue;
     blocks.push({ element, text, provenance });

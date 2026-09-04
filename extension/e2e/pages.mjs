@@ -51,15 +51,23 @@ const doc = (title, body, head = "") =>
 ${body}
 </body></html>`;
 
-/** The original page: one AI-authored article, one human-authored, nav and footer decoys. */
-function articlePage(flagged, clean) {
+/**
+ * One document per page, with nav and footer decoys.
+ *
+ * The two used to share a page, which made the "leaves the human-authored article alone"
+ * assertion vacuous in two compounding ways. `contentRoot()` returns the *first* `<article>`,
+ * so the second was outside the root and never extracted at all -- the check passed because
+ * nothing was scored, not because nothing was flagged. And had it been extracted, scope.md
+ * 8's hysteresis would have been entitled to extend the flagged run straight into it, since
+ * a run extends over any neighbour above `t_off`. Separate pages test both directions for
+ * the reasons they claim to.
+ */
+function articlePage(id, document_) {
   return doc(
     "e2e",
     `  <nav><p>Navigation text that must never be scored, however long it is made.</p></nav>
   <main>
-    <article id="flagged">${paras(flagged.text)}</article>
-    <hr>
-    <article id="clean">${paras(clean.text)}</article>
+    <article id="${id}">${paras(document_.text)}</article>
   </main>
   <footer><p>Footer text that must never be scored, however long it is made.</p></footer>`,
   );
@@ -132,6 +140,34 @@ function darkPage(flagged) {
   );
 }
 
+/**
+ * A page in the shape a React or Vue app emits: no <p> anywhere, every paragraph a <div>,
+ * wrapped several containers deep. Until leaf-div support this page scored nothing at all,
+ * and a great deal of the real web looks exactly like it.
+ *
+ * The nesting is the point. `#app` and `.Article` are containers and must be skipped in
+ * favour of what they hold; if the outer-wins rule reached them instead, the whole page
+ * would collapse into one block.
+ */
+function frameworkPage(flagged) {
+  const paraDivs = (text) =>
+    paras(text)
+      .split("\n")
+      .map((p) => p.replace(/^<p>/, '<div class="Article-body">').replace(/<\/p>$/, "</div>"))
+      .join("\n");
+
+  return doc(
+    "e2e framework",
+    `  <div id="app">
+    <div class="Header"><div class="Header-title">Example</div></div>
+    <div class="Article" id="flagged">
+      ${paraDivs(flagged.text)}
+    </div>
+    <div class="Footer"><div>Footer text, far too short to be scored.</div></div>
+  </div>`,
+  );
+}
+
 /** An empty shell the harness fills at runtime, to drive the SPA MutationObserver path. */
 function spaPage() {
   return doc("e2e spa", `  <main id="root"><p>Placeholder, replaced by the harness.</p></main>`);
@@ -163,7 +199,17 @@ function realPages() {
 export function buildPages() {
   const fx = JSON.parse(readFileSync(join(repo, "fixtures", "documents.json"), "utf-8"));
   const flagged = fx.documents.find((d) => d.expected.runs.some((r) => r.flagged));
-  const clean = fx.documents.find((d) => !d.expected.runs.some((r) => r.flagged));
+
+  /**
+   * The *longest* clean document, not the first. scope.md 8 only flags a run of 150 words
+   * or more, so a shorter human document cannot be flagged whatever the model says, and
+   * asserting that it is not would prove nothing. The longest is comfortably over the
+   * threshold, so the assertion can actually fail.
+   */
+  const clean = fx.documents
+    .filter((d) => !d.expected.runs.some((r) => r.flagged))
+    .map((d) => ({ doc: d, words: d.chunks.reduce((sum, c) => sum + c.words, 0) }))
+    .sort((a, b) => b.words - a.words)[0]?.doc;
   if (!flagged || !clean) throw new Error("documents.json needs one flagged and one clean case");
 
   const real = realPages();
@@ -178,9 +224,11 @@ export function buildPages() {
     /** Paragraph markup for that text, ready to inject. */
     flaggedParagraphs: paras(flagged.text),
     routes: {
-      "/": articlePage(flagged, clean),
+      "/": articlePage("flagged", flagged),
+      "/clean": articlePage("clean", clean),
       "/structured": structuredPage(flagged),
       "/dark": darkPage(flagged),
+      "/framework": frameworkPage(flagged),
       "/spa": spaPage(),
       ...real.routes,
     },
