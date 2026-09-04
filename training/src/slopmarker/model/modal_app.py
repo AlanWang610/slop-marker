@@ -54,6 +54,9 @@ export_base = base.uv_pip_install(
     "onnxruntime==1.29.0",
     # onnxruntime.quantization.matmul_nbits_quantizer imports it and does not declare it.
     "onnx_ir",
+    # RAID is read as a plain HuggingFace dataset. The raid-bench package pins
+    # numpy<1.27 and scikit-learn<1.4 and would drag the project onto a 2023 stack.
+    "datasets>=3",
 )
 
 
@@ -850,3 +853,215 @@ def determinism_check(run_id: str, version: str, limit: int = 400) -> dict[str, 
         path.unlink(missing_ok=True)
     print(f"cpu={model_name} isa={isa}")
     return results
+
+
+@app.function(
+    image=export_image,
+    cpu=16.0,
+    memory=65536,
+    volumes=VOLUMES,
+    secrets=[hf_secret],
+    timeout=6 * 3600,
+)
+def document_eval(
+    run_id: str,
+    source: str = "test_human",
+    limit: int = 1500,
+    version: str = "v3",
+) -> dict[str, Any]:
+    """Score whole documents through the full scope.md 8 pipeline on the shipped artifact.
+
+    Every number reported so far is chunk-level, but a reader never sees a chunk. They
+    see a highlighted *run*, produced after the length penalty, run pooling, the
+    document prior and the 150-word minimum. A document is a false positive when a run
+    survives all of that, which is a stricter question than whether some 200-word
+    window crossed a threshold.
+
+    Three sources, in increasing distance from the training distribution:
+
+      test_human   held-out human documents from our own corpus. In-distribution, so
+                   this is a floor rather than an estimate of production.
+      unseen_host  held-out human documents whose registered domain appears nowhere in
+                   train. held_out_domains_per_genre is configured and enforced
+                   nowhere, so this reconstructs the reservation after the fact; it is
+                   the only measurement of host-template memorisation available.
+      raid         the external benchmark. Its human side comes from eight sources this
+                   corpus deliberately never harvested, so it is genuinely
+                   out-of-distribution human text, and it carries adversarial attacks
+                   that our corpus contains none of.
+    """
+    import json
+    import random
+    from collections import defaultdict
+    from pathlib import Path
+
+    import numpy as np
+    import onnxruntime as ort
+    from transformers import AutoTokenizer
+
+    from slopmarker.corpus.build import load_documents
+    from slopmarker.data.chunking import chunk_block
+    from slopmarker.data.dataset import load_windows
+    from slopmarker.data.normalize import collapse_whitespace, strip_markdown
+    from slopmarker.eval.aggregate import Chunk, aggregate
+    from slopmarker.eval.calibration import Calibration
+    from slopmarker.eval.metrics import auroc, clopper_pearson_upper
+
+    volume.reload()
+    root = Path(DATA_ROOT)
+    ckpt = root / "artifacts" / "runs" / run_id / "best"
+    export_dir = root / "artifacts" / "export" / run_id
+    cal = Calibration.load(export_dir / "calibration.json")
+
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 16
+    session = ort.InferenceSession(
+        str(export_dir / "model.int8.onnx"),
+        sess_options=options,
+        providers=["CPUExecutionProvider"],
+    )
+    tokenizer = AutoTokenizer.from_pretrained(ckpt)
+    rng = random.Random(0)
+
+    def score_document(text: str) -> dict[str, Any] | None:
+        """Chunk exactly as the extension does, score on int8, aggregate per scope.md 8."""
+        chunks = chunk_block(collapse_whitespace(text))
+        if not chunks:
+            return None
+        scored: list[Chunk] = []
+        for start in range(0, len(chunks), 32):
+            batch = chunks[start : start + 32]
+            enc = tokenizer(
+                batch, padding=True, truncation=True, max_length=512, return_tensors="np"
+            )
+            logits = session.run(
+                None,
+                {
+                    "input_ids": enc["input_ids"].astype(np.int64),
+                    "attention_mask": enc["attention_mask"].astype(np.int64),
+                },
+            )[0]
+            scored.extend(
+                Chunk(logit=float(value), words=len(chunk.split()))
+                for value, chunk in zip(np.asarray(logits).reshape(-1), batch, strict=True)
+            )
+        result = aggregate(scored, cal)
+        flagged = result.flagged_runs
+        return {
+            "n_chunks": len(scored),
+            "words": sum(c.words for c in scored),
+            "flagged": bool(flagged),
+            "flagged_words": sum(r.words for r in flagged),
+            "max_run_score": max((r.score for r in result.runs), default=0.0),
+        }
+
+    documents: list[dict[str, Any]] = []
+    if source == "raid":
+        from datasets import load_dataset
+
+        # The train split is labelled and public; test is leaderboard-held-out.
+        stream = load_dataset("liamdugan/raid", split="train", streaming=True)
+        pool: list[dict[str, Any]] = []
+        for index, row in enumerate(stream):
+            if index >= limit * 40:
+                break
+            pool.append(
+                {
+                    "text": row["generation"],
+                    "is_ai": row["model"] != "human",
+                    "domain": row.get("domain", "unknown"),
+                    "attack": row.get("attack", "none"),
+                }
+            )
+        rng.shuffle(pool)
+        # RAID is overwhelmingly AI; a flat sample would carry almost no human rows.
+        human = [r for r in pool if not r["is_ai"]][: limit // 2]
+        ai = [r for r in pool if r["is_ai"]][: limit - len(human)]
+        documents = human + ai
+    else:
+        by_id = {d.doc_id: d for d in load_documents(root, "interim")}
+        train_hosts = set()
+        for window in load_windows(root, version, "train"):
+            doc = by_id.get(window.doc_id)
+            if doc is not None and doc.host:
+                train_hosts.add(doc.host)
+
+        pool = []
+        for doc_id in {w.doc_id for w in load_windows(root, version, "test")}:
+            doc = by_id.get(doc_id)
+            if doc is None or doc.doc_class != "human":
+                continue
+            if source == "unseen_host" and (not doc.host or doc.host in train_hosts):
+                continue
+            pool.append(
+                {
+                    # build() strips markdown from both classes before windowing, and
+                    # production reads rendered DOM text, so match that here.
+                    "text": strip_markdown(doc.text),
+                    "is_ai": False,
+                    "domain": doc.genre,
+                    "attack": doc.hard_negative_kind or "none",
+                }
+            )
+        rng.shuffle(pool)
+        documents = pool[:limit]
+
+    print(f"scoring {len(documents)} documents from {source}")
+    results: list[dict[str, Any]] = []
+    for index, row in enumerate(documents):
+        if index and index % 200 == 0:
+            print(f"  {index}/{len(documents)}")
+        scored = score_document(row["text"])
+        if scored is None:
+            continue
+        results.append(
+            {**scored, "is_ai": row["is_ai"], "domain": row["domain"], "attack": row["attack"]}
+        )
+
+    human_rows = [r for r in results if not r["is_ai"]]
+    ai_rows = [r for r in results if r["is_ai"]]
+
+    def rate(rows: list[dict[str, Any]]) -> float:
+        return sum(r["flagged"] for r in rows) / len(rows) if rows else float("nan")
+
+    report: dict[str, Any] = {
+        "run_id": run_id,
+        "source": source,
+        "calibration_version": cal.version,
+        "t_on": cal.t_on,
+        "documents_scored": len(results),
+        "documents_skipped_too_short": len(documents) - len(results),
+        "n_human": len(human_rows),
+        "n_ai": len(ai_rows),
+        "doc_level_fpr": rate(human_rows),
+        "doc_level_recall": rate(ai_rows),
+    }
+    if human_rows:
+        flagged = sum(r["flagged"] for r in human_rows)
+        report["doc_level_fpr_upper"] = clopper_pearson_upper(flagged, len(human_rows))
+    if human_rows and ai_rows:
+        report["doc_auroc"] = auroc(
+            np.array([r["max_run_score"] for r in human_rows]),
+            np.array([r["max_run_score"] for r in ai_rows]),
+        )
+
+    for label, key in (("by_domain", "domain"), ("by_attack", "attack")):
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in results:
+            grouped[str(row[key])].append(row)
+        report[label] = {
+            name: {
+                "n": len(rows),
+                "n_human": sum(1 for r in rows if not r["is_ai"]),
+                "fpr": rate([r for r in rows if not r["is_ai"]]),
+                "recall": rate([r for r in rows if r["is_ai"]]),
+            }
+            for name, rows in sorted(grouped.items())
+        }
+
+    (export_dir / f"doc_eval.{source}.json").write_text(
+        json.dumps(report, indent=2, default=str), encoding="utf-8"
+    )
+    volume.commit()
+    print(json.dumps({k: v for k, v in report.items() if not k.startswith("by_")}, indent=2))
+    return report

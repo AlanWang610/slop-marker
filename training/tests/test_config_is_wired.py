@@ -69,9 +69,41 @@ def config_keys() -> set[str]:
     return keys
 
 
+def code_only(source: str) -> str:
+    """Strip comments and docstrings, keeping ordinary string literals.
+
+    Prose does not enforce anything. A docstring that names a knob while explaining
+    that it is *not* wired up would otherwise satisfy this check and hide exactly the
+    defect it exists to find -- which is what happened the first time a docstring here
+    mentioned `held_out_domains_per_genre`. Ordinary string literals are kept, because
+    `cfg.caps.get("max_genre_share")` is a genuine read.
+    """
+    import ast
+    import io
+    import tokenize
+
+    without_comments = []
+    for token in tokenize.generate_tokens(io.StringIO(source).readline):
+        if token.type != tokenize.COMMENT:
+            without_comments.append(token[:2])
+    text = tokenize.untokenize(without_comments)
+
+    docstrings = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            doc = ast.get_docstring(node, clean=False)
+            if doc:
+                docstrings.append(doc)
+    for doc in docstrings:
+        text = text.replace(doc, "")
+    return text
+
+
 def source_text() -> str:
     return "\n".join(
-        path.read_text(encoding="utf-8") for path in SRC.rglob("*.py") if path.name != "config.py"
+        code_only(path.read_text(encoding="utf-8"))
+        for path in SRC.rglob("*.py")
+        if path.name != "config.py"
     )
 
 
@@ -98,3 +130,21 @@ def test_the_unenforced_list_is_honest() -> None:
 def test_the_unenforced_list_is_current() -> None:
     """Every name on the list must still exist in the config."""
     assert config_keys() >= NOT_YET_ENFORCED
+
+
+def test_prose_does_not_count_as_enforcement() -> None:
+    """The check must read code, not comments -- a mention is not a use."""
+    source = '''
+"""A module docstring naming max_genre_share while enforcing nothing."""
+
+# A comment mentioning min_natural_fraction.
+def f(cfg):
+    """Docstring naming raid_ngram."""
+    return cfg.caps.get("max_documents_per_cluster")
+'''
+    text = code_only(source)
+    assert not is_read("max_genre_share", text)
+    assert not is_read("min_natural_fraction", text)
+    assert not is_read("raid_ngram", text)
+    # A real read through a string literal must still count.
+    assert is_read("max_documents_per_cluster", text)
