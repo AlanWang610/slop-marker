@@ -117,3 +117,21 @@ class TestIntegrityChecks:
         skewed = {g: 0.5 for g in GENRES} | {"product_marketing": 0.85}
         with pytest.raises(SplitIntegrityError, match="label-leaking"):
             check_split_integrity(**self._ok(genre_ai_rate=skewed))
+
+
+def test_seed_and_its_derivatives_share_a_split() -> None:
+    """A human seed and every AI row generated from it must land together.
+
+    Otherwise the model sees the same content, entities and topic on both sides of
+    the split, and the test number measures memorization rather than detection.
+    """
+    seed_cluster = "seedcluster-1"
+    keys = {
+        "human_seed": group_key(seed_cluster_id=seed_cluster, host="example.com", doc_id="h1"),
+        "ai_rewrite": group_key(seed_cluster_id=seed_cluster, doc_id="a1"),
+        "ai_mixed": group_key(seed_cluster_id=seed_cluster, doc_id="a2"),
+        "ai_continuation": group_key(seed_cluster_id=seed_cluster, doc_id="a3"),
+    }
+    assert len(set(keys.values())) == 1
+    splits = {assign_split(k, SALT, CFG) for k in keys.values()}
+    assert len(splits) == 1

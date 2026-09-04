@@ -110,6 +110,25 @@ def build(root: Path, cfg: CorpusConfig, version: str) -> dict[str, Any]:
     stats["after_cluster_cap"] = len(by_id)
 
     # 5. Split assignment, on groups rather than documents.
+    #
+    #    A human seed must share its derivatives' group. AI rows carry
+    #    seed_cluster_id, but the seed itself does not know it was used as one, so
+    #    without this it would group by cluster-or-host and could land in train while
+    #    its own AI rewrite lands in test -- the same content on both sides of the
+    #    split, which is exactly what grouping exists to prevent.
+    seed_clusters = {
+        doc.seed_doc_id: doc.seed_cluster_id
+        for doc in by_id.values()
+        if doc.seed_doc_id and doc.seed_cluster_id
+    }
+    adopted = 0
+    for doc_id, cluster in seed_clusters.items():
+        seed = by_id.get(doc_id)
+        if seed is not None and not seed.seed_cluster_id:
+            seed.seed_cluster_id = cluster
+            adopted += 1
+    stats["seeds_adopted_into_generation_clusters"] = adopted
+
     for doc in by_id.values():
         doc.group_key = group_key(
             seed_cluster_id=doc.seed_cluster_id,
