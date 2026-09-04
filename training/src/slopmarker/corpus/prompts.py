@@ -121,6 +121,12 @@ class SeedCard:
     genre: Genre
     topic: str
     entities: tuple[str, ...] = ()
+    # Concrete figures lifted from the seed: years, quantities, percentages.
+    # Without these, a model given only a topic writes prose with almost no
+    # numbers -- measured at 0.13x the human digit density, against 0.77x for the
+    # one style that does see the seed text. That gap became the single strongest
+    # class signal in the corpus.
+    figures: tuple[str, ...] = ()
     target_words: int = 400
     headings: int = 0
     lists: int = 0
@@ -162,6 +168,24 @@ def structure_clause(card: SeedCard) -> str:
     return " ".join(parts)
 
 
+def figures_clause(card: SeedCard) -> str:
+    """Ask for concrete specifics, seeded from the human document.
+
+    Real writing on these subjects is full of dates, quantities and percentages. A
+    model handed only a topic writes almost none, which makes numeric density a
+    near-perfect class signal rather than a property of AI writing.
+    """
+    if not card.figures:
+        return (
+            "\nInclude concrete specifics -- dates, quantities, percentages, named "
+            "sources -- as a piece of real writing on this subject would."
+        )
+    return (
+        "\nWork in these specific figures where they fit naturally, and add other "
+        f"concrete dates and quantities as needed: {', '.join(card.figures)}"
+    )
+
+
 def base_system(card: SeedCard) -> str:
     return (
         f"You are writing a single piece of {card.publication_type} for publication on "
@@ -185,7 +209,8 @@ def build(
     if style == "continuation":
         system = (
             "Continue the following text. Match its voice, tense, formatting and level "
-            "of detail exactly. Do not summarize, do not restate what came before, and "
+            "of detail exactly, including how often it cites specific dates, quantities "
+            "and figures. Do not summarize, do not restate what came before, and "
             "do not conclude the piece -- keep writing from where it stops. "
             f"Write about {card.target_words} more words. Output only the continuation."
         )
@@ -206,17 +231,18 @@ def build(
             f"Cover: {entities}\n"
             f"Audience: {card.audience}\n"
             f"Angle: {angle or ANGLES[0]}"
+            f"{figures_clause(card)}"
         )
     elif style == "persona_instruction":
         chosen = persona or PERSONAS[card.genre][0]
         system = f"You are {chosen}. " + system
-        user = f"Write {card.publication_type} about: {card.topic}"
+        user = f"Write {card.publication_type} about: {card.topic}{figures_clause(card)}"
     elif style == "structured":
         system += (
             "\nStructure the piece as a numbered list of points, each with a short "
             "paragraph of explanation, with a brief introduction and no conclusion."
         )
-        user = f"Write {card.publication_type} about: {card.topic}"
+        user = f"Write {card.publication_type} about: {card.topic}{figures_clause(card)}"
     else:  # pragma: no cover - exhaustive over PromptStyle
         raise ValueError(f"unknown style {style}")
 

@@ -226,3 +226,46 @@ class TestMarkdownStripPreservesSpans:
         out, spans = _strip_markdown_keeping_spans("## Title\n\n**bold**", None)
         assert spans is None
         assert out.strip() == "Title\n\nbold"
+
+
+class TestSeedFigures:
+    """Numeric density was the strongest class signal in the first two corpora.
+
+    A model handed only a topic writes almost no numbers -- measured at 0.13x the
+    human digit rate, against 0.77x for the one style that sees the seed text. Passing
+    the seed's own figures into every prompt is what closes that gap.
+    """
+
+    def test_figures_are_extracted(self) -> None:
+        from slopmarker.corpus.generate import figures_of
+        from slopmarker.data.schema import DocumentRow
+
+        doc = DocumentRow(
+            doc_id="d", text="Reserves rose 4.5% to 3.2 billion on 12 March 2021.",
+            source="cc_news", doc_class="human", ai_fraction=0.0, genre="news", n_words=20,
+        )
+        figures = figures_of(doc)
+        assert figures, "the extractor must find numbers in text that plainly has them"
+        assert "4.5%" in figures
+        assert any("2021" in f for f in figures)
+
+    def test_regex_actually_matches(self) -> None:
+        """Guards a real bug: a stray control character once made this match nothing."""
+        from slopmarker.corpus.generate import FIGURE
+
+        assert "\x08" not in FIGURE.pattern, "control character in the pattern"
+        assert FIGURE.findall("in 2021 about 12 items")
+
+    def test_every_prompt_style_asks_for_specifics(self) -> None:
+        from slopmarker.corpus.prompts import SeedCard, build
+
+        card = SeedCard(doc_id="d", genre="news", topic="reserves", figures=("4.5%", "2021"))
+        for style in ("topic_prompt", "persona_instruction", "structured"):
+            text = build(card, style).user
+            assert "4.5%" in text, style
+
+    def test_falls_back_when_the_seed_has_no_numbers(self) -> None:
+        from slopmarker.corpus.prompts import SeedCard, build
+
+        card = SeedCard(doc_id="d", genre="news", topic="rugs")
+        assert "concrete specifics" in build(card, "topic_prompt").user

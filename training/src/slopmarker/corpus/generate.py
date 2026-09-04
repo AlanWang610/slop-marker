@@ -101,6 +101,21 @@ def entities_of(doc: DocumentRow, limit: int = 6) -> tuple[str, ...]:
     return tuple(found)
 
 
+FIGURE = re.compile(r"\d{1,4}(?:[.,]\d+)?%?(?:\s?(?:per cent|percent|million|billion))?")
+
+
+def figures_of(doc: DocumentRow, limit: int = 8) -> tuple[str, ...]:
+    """Concrete numbers from the seed, so generated prose is not number-free."""
+    seen: list[str] = []
+    for match in FIGURE.finditer(collapse_whitespace(doc.text)):
+        value = match.group(0).strip()
+        if value and value not in seen:
+            seen.append(value)
+        if len(seen) >= limit:
+            break
+    return tuple(seen)
+
+
 def seed_card(doc: DocumentRow) -> SeedCard:
     words = doc.n_words or count_words(doc.text)
     # The prefix is sized from the *capped* target, not the raw document. Seeds run to
@@ -112,6 +127,7 @@ def seed_card(doc: DocumentRow) -> SeedCard:
         genre=doc.genre if doc.genre != "other" else "blog_personal",
         topic=topic_of(doc),
         entities=entities_of(doc),
+        figures=figures_of(doc),
         # The seed's own length and shape, which is what keeps length and structure
         # from carrying label information.
         target_words=target_words,
