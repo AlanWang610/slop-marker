@@ -1,4 +1,4 @@
-# Calibration -- bundle `mb-base-0.2.0-dev`
+# Calibration -- bundle `mb-base-0.3.0-dev`
 
 Thresholds selected on the **quantized artifact that ships**, not on the PyTorch
 checkpoint (scope.md 5.5). Artifact: weight-only int8 encoder with an int4 embedding
@@ -96,6 +96,40 @@ Measured inside the export, on 4,000 calibration windows, and enforced as a gate
 0.7% of windows land on opposite sides of the threshold between the two artifacts.
 That is the honest cost of quantization for a reader: roughly one highlighted passage
 in 140 would differ had the extension shipped fp32 at 599 MB.
+
+## Document-level false positives
+
+The bound above is chunk-level. What a reader sees is a highlighted run, after the
+length penalty, run pooling, the document prior and the 150-word minimum. Measured
+inside the export, on held-out human documents, and enforced as a gate:
+
+| quantity | value | gate |
+|---|---|---|
+| documents | 1,200 | >= 300 ✓ |
+| flagged | 4 | -- |
+| document-level FPR | 0.33% | -- |
+| Clopper-Pearson 95% upper | 0.76% | <= 3% ✓ |
+
+This agrees with the standalone runs in `document-eval-r1.md`, which measured 0.33% on
+1,500 corpus documents and 0.20% on 1,000 documents from hosts absent from training.
+
+## Reproducibility
+
+This bundle is a second export of the same checkpoint, run to record the document-level
+gate that `mb-base-0.2.0-dev` predates. Every artifact except `calibration.json` came
+out byte-identical, on a different container:
+
+| file | sha256 |
+|---|---|
+| `model.onnx` | `42e850ac...` in both |
+| `config.json`, `tokenizer.json`, `tokenizer_config.json` | identical in both |
+| `calibration.json` | differs, and only by the version string it carries |
+
+Every calibration number reproduced exactly -- `t_on`, `t_off`, temperature, the oracle
+gap, the per-genre thresholds -- as did the int8-vs-fp32 comparison to five decimals.
+Taken with the cross-instruction-set check in `export-r1.md`, the weight-only recipe is
+deterministic across containers, exports and instruction sets. The dynamic-quantization
+recipe it replaced was not.
 
 ## What is not measured
 

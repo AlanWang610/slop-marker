@@ -1,4 +1,4 @@
-# Document-level evaluation -- run r1, bundle `mb-base-0.2.0-dev`
+# Document-level evaluation -- run r1, bundle `mb-base-0.3.0-dev`
 
 Everything in `calibration-*.md` is chunk-level, and a chunk is not what anyone sees. A
 reader sees a highlighted **run**, produced only after the length penalty, run pooling,

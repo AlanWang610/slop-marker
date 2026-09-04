@@ -1,5 +1,10 @@
 # ONNX Runtime Web latency -- bundle `mb-base-0.2.0-dev`
 
+> These figures were measured on `mb-base-0.2.0-dev` and carry over unchanged to
+> `mb-base-0.3.0-dev`, which ships a byte-identical `model.onnx` (sha256 `42e850ac...`
+> in both). The later bundle differs only in `calibration.json`, which records the
+> document-level gate. Latency was not re-measured, because the graph did not change.
+
 The scope.md 10 budget was an estimate. These are measurements, and they change one
 conclusion: **the shipped artifact runs about 2x slower in the browser than the estimate
 assumed, for a reason that is structural rather than incidental.**
