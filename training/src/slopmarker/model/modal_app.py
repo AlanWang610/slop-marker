@@ -1025,11 +1025,14 @@ def document_eval(
         )
     else:
         by_id = {d.doc_id: d for d in load_documents(root, "interim")}
-        train_hosts = set()
-        for window in load_windows(root, version, "train"):
-            doc = by_id.get(window.doc_id)
-            if doc is not None and doc.host:
-                train_hosts.add(doc.host)
+        # Only the unseen-host source needs this, and it costs a pass over ~600k
+        # training windows to build, so the test_human source should not pay for it.
+        train_hosts: set[str] = set()
+        if source == "unseen_host":
+            for window in load_windows(root, version, "train"):
+                doc = by_id.get(window.doc_id)
+                if doc is not None and doc.host:
+                    train_hosts.add(doc.host)
 
         pool = []
         for doc_id in {w.doc_id for w in load_windows(root, version, "test")}:
