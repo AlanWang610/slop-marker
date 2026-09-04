@@ -171,7 +171,11 @@ def score_split(run_id: str, version: str, split: str, checkpoint: str = "best")
     timeout=4 * 3600,
 )
 def export_and_calibrate(
-    run_id: str, version: str, bundle_version: str, checkpoint: str = "best"
+    run_id: str,
+    version: str,
+    bundle_version: str,
+    checkpoint: str = "best",
+    max_score: int = 30000,
 ) -> dict[str, Any]:
     """Export to ONNX, quantize, calibrate on the int8 artifact, assemble the bundle.
 
@@ -180,6 +184,7 @@ def export_and_calibrate(
     the PyTorch model.
     """
     import json
+    import random
     from pathlib import Path
 
     import numpy as np
@@ -205,8 +210,21 @@ def export_and_calibrate(
     report: dict[str, Any] = {"run_id": run_id, "version": bundle_version}
 
     fp32 = export_fp32(ckpt, export_dir)
-    calib_rows = load_windows(root, version, "calibration")
-    test_rows = load_windows(root, version, "test")
+
+    # Scoring runs on CPU through ONNX Runtime, so the split is subsampled. The bound
+    # that matters is per-genre: placing a threshold at a 2% tail needs a few thousand
+    # human windows in the smallest genre, not every window in the corpus.
+    rng = random.Random(0)
+
+    def sample(rows: list[Any]) -> list[Any]:
+        if len(rows) <= max_score:
+            return rows
+        return rng.sample(rows, max_score)
+
+    calib_rows = sample(load_windows(root, version, "calibration"))
+    test_rows = sample(load_windows(root, version, "test"))
+    report["n_calibration"] = len(calib_rows)
+    report["n_test"] = len(test_rows)
     sample_texts = [collapse_whitespace(r.text) for r in calib_rows[:200]]
 
     parity = check_parity(ckpt, fp32, sample_texts)
@@ -221,13 +239,17 @@ def export_and_calibrate(
     report["graph"] = verify_graph(fp32, ckpt)
 
     # Score the calibration and test splits with the *int8* artifact.
-    session = ort.InferenceSession(str(int8), providers=["CPUExecutionProvider"])
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 16
+    session = ort.InferenceSession(
+        str(int8), sess_options=options, providers=["CPUExecutionProvider"]
+    )
     tokenizer = AutoTokenizer.from_pretrained(ckpt)
 
     def score(rows: list[Any]) -> list[dict[str, Any]]:
         out = []
-        for start in range(0, len(rows), 32):
-            chunk = rows[start : start + 32]
+        for start in range(0, len(rows), 64):
+            chunk = rows[start : start + 64]
             enc = tokenizer(
                 [collapse_whitespace(r.text) for r in chunk],
                 padding=True,
